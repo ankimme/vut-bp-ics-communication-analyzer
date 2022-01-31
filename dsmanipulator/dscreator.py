@@ -10,6 +10,11 @@ from .utils.communicationpair import CommunicationPair
 
 class DatasetCreator:
 
+    file_name: str
+    df: pd.DataFrame
+    comm_pairs_l3_bidict: bidict
+    comm_pairs_l4_bidict: bidict
+
     def __init__(self, file_name: str):
         """Initialize a DatasetCreator instance and load data to dataframe from file.
 
@@ -20,10 +25,8 @@ class DatasetCreator:
         """
         self.file_name = file_name
         self.df = self._load_data()
-        # self._add_communication_id_columns()
-        # self._add_relative_days()
-
-        # self.df = self.df.set_index(pd.DatetimeIndex(self.df['TimeStamp'])).drop(['TimeStamp'], axis=1)
+        self.comm_pairs_l3_bidict = None
+        self.comm_pairs_l4_bidict = None
 
     def _load_data(self) -> pd.DataFrame:
         # todo robustnejsi pres nejaky DataSetLoader
@@ -60,13 +63,39 @@ class DatasetCreator:
         # compute inter arrival time
         self.df['diffast'] = times - shifted
 
-    def add_communication_id_columns(self) -> None:
-        """Add L3 and L4 communication id columns to dataframe.
+    def add_communication_id_l3(self) -> None:
+        """Add L3 communication id column to dataframe.
         """
-        l3_pairs, l4_pairs = self.find_communication_pairs()
 
-        self.df['l3comId'] = self.df.apply(lambda row: l3_pairs.inverse[CommunicationPair(row.srcIP, row.dstIP)], axis=1).astype("category")
-        self.df['l4comId'] = self.df.apply(lambda row: l4_pairs.inverse[CommunicationPair(row.srcIP, row.dstIP, row.srcPort, row.dstPort)], axis=1).astype("category")
+        self.comm_pairs_l3_bidict = self.find_communication_pairs_l3()
+
+        srcIPs = self.df['srcIP'].values
+        dstIPs = self.df['dstIP'].values
+
+        def f(a, b):
+            return self.comm_pairs_l3_bidict.inv[CommunicationPair(a, b)]
+
+        vf = np.vectorize(f)
+
+        self.df['l3commId'] = vf(srcIPs, dstIPs)
+
+    def add_communication_id_l4(self) -> None:
+        """Add L4 communication id column to dataframe.
+        """
+
+        self.comm_pairs_l4_bidict = self.find_communication_pairs_l4()
+
+        srcIPs = self.df['srcIP'].values
+        dstIPs = self.df['dstIP'].values
+        srcPorts = self.df['srcPort'].values
+        dstPorts = self.df['dstPort'].values
+
+        def f(a, b, c, d):
+            return self.comm_pairs_l4_bidict.inv[CommunicationPair(a, b, c, d)]
+
+        vf = np.vectorize(f)
+
+        self.df['l4commId'] = vf(srcIPs, dstIPs, srcPorts, dstPorts)
 
     def add_relative_days(self) -> None:
         """Add a realtive day column and update DateTime column.
@@ -92,84 +121,51 @@ class DatasetCreator:
         # todo dynamic name
         self.df['TimeStamp'] = self.df['TimeStamp'].values + relative_days * np.timedelta64(1, 'D')
 
-    def add_relative_days_slow(self) -> None:
-        """Add a realtive day column and update DateTime column.
+    def find_communication_pairs_l3(self) -> bidict[int, CommunicationPair]:
+        """Find all L3 communication pairs.
 
-        The relative day will be added to the DateTime column.
-        The date will be wrong, but it will reflect the relative time .
-
-        """
-        def find_relative_days() -> list:
-            """Create a list of relative days in dataframe.
-
-            Returns
-            -------
-            list
-                Of format [0..0, 1..1, 2..2, 3..3, ...]
-            """
-
-            # edge cases
-            if len(self.df.index) == 0:
-                return []
-            if len(self.df.index) == 1:
-                return [0]
-
-            # core of computation
-            res_list = [0]
-            counter = 0
-            for i in range(1, len(self.df.index)):
-                if self.df['TimeStamp'][i].time() < self.df['TimeStamp'][i - 1].time():
-                    counter += 1
-                res_list.append(counter)
-            return res_list
-
-        self.df['relativeDay'] = find_relative_days()
-
-        # add relative day to timestamp column
-        self.df['TimeStamp'] = self.df.apply(lambda row: row.TimeStamp + timedelta(days=row.relativeDay), axis=1)
-
-    def find_communication_pairs(self) -> tuple[bidict[int, CommunicationPair], bidict[int, CommunicationPair]]:
-        """Find L3 and L4 communication pairs.
-
-        Identify all unique communicaion pairs in a dataframe and assign an id.
+        Identify all unique L3 communicaion pairs in the dataframe and assign an id.
 
         L3: ip to ip
+
+        Returns
+        -------
+        bidict[int, CommunicationPair]
+
+            A dictionary containing every communication pair found in the dataframe.
+            Key: new id of communication pair
+            Value: communication pair
+        """
+
+        # get all combinations of ips occuring in the dataframe
+        list_of_tuples = self.df.loc[:, ['srcIP', 'dstIP']].value_counts().index.values
+        list_of_pairs = list(map(lambda x: CommunicationPair(x[0], x[1]), list_of_tuples))
+        ids = np.arange(1, len(list_of_pairs) + 1, dtype=np.int64)
+
+        return bidict(zip(ids, list_of_pairs))
+
+    def find_communication_pairs_l4(self) -> bidict[int, CommunicationPair]:
+        """Find all L4 communication pairs.
+
+        Identify all unique L4 communicaion pairs in the dataframe and assign an id.
+
         L4: ip:port to ip:port
 
         Returns
         -------
-        tuple[bidict[int, CommunicationPair], bidict[int, CommunicationPair]]
-            [description]
+        bidict[int, CommunicationPair]
 
-            Two bidirectional dictionaries (L3 and L4)
-            Key: id of communication pair
+            A dictionary containing every communication pair found in the dataframe.
+            Key: new id of communication pair
             Value: communication pair
         """
 
-        tmp_l3_dict = dict()
-        tmp_l4_dict = dict()
-        i, j = 1, 1
-        for (srcIP, srcPort, dstIP, dstPort) in zip(self.df.srcIP, self.df.srcPort, self.df.dstIP, self.df.dstPort):
-            # L3
-            if (srcIP, dstIP) not in tmp_l3_dict:
-                tmp_l3_dict[(srcIP, dstIP)] = i
-                i = i + 1
+        # get all combinations of ips occuring in the dataframe
+        list_of_tuples = self.df.loc[:, ['srcIP', 'dstIP', 'srcPort', 'dstPort']].value_counts().index.values
+        list_of_pairs = list(map(lambda x: CommunicationPair(x[0], x[1], x[2], x[3]), list_of_tuples))
+        ids = np.arange(1, len(list_of_pairs) + 1, dtype=np.int64)
 
-            # L4
-            if (srcIP, srcPort, dstIP, dstPort) not in tmp_l4_dict:
-                tmp_l4_dict[(srcIP, srcPort, dstIP, dstPort)] = j
-                j = j + 1
-
-        l4_communication_pairs = bidict()
-        l3_communication_pairs = bidict()
-
-        for key, value in tmp_l3_dict.items():
-            l3_communication_pairs[value] = CommunicationPair(key[0], key[1])
-
-        for key, value in tmp_l4_dict.items():
-            l4_communication_pairs[value] = CommunicationPair(key[0], key[2], key[1], key[3])
-
-        return l3_communication_pairs, l4_communication_pairs
+        return bidict(zip(ids, list_of_pairs))
 
     def return_deepcopy(self) -> pd.DataFrame:
         """Create a deepcopy of the dataframe.
