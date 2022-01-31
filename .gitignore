@@ -1,3 +1,10 @@
-env/
+# my files
 test.ipynb
 pozn.txt
+
+# environment
+env/
+
+# pycache
+__pycache__/
+*.py[cod]
