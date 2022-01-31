@@ -1,0 +1,5 @@
+Exceptions: file does not exists
+
+Strategy pattern for adding custom columns
+
+Inner dictionary for custom column names?
