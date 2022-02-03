@@ -95,62 +95,78 @@ def find_communication_pairs_l4(df: pd.DataFrame) -> bidict[int, CommunicationPa
 
     return bidict(zip(ids, list_of_pairs))
 
-
-def return_deepcopy(self) -> pd.DataFrame:
-    """Create a deepcopy of the dataframe.
-
-    Returns
-    -------
-    pd.Dataframe
-        Deep copy of created dataframe
-    """
-    deep = self.df.copy()
-    return deep
-
 # endregion
 
 # region Custom column creators
 
 
-def add_inter_arrival_time_ad(self) -> None:
-    """Add Inter arrival time all directions column to dataframe.
+def add_inter_arrival_time_ad(df: pd.DataFrame) -> pd.DataFrame:
+    """Add interArrivalTimeAD (all directions) column to dataframe.
 
     Use all packets. Direction does not matter.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+
+    Returns
+    -------
+    pd.DataFrame
+        Dataframe with interArrivalTimeAD column.
     """
+    assert 'relTime' in df.columns
 
     # convert to numpy array
-    times = self.df['Relative Time'].values
+    times = df['relTime'].values
 
     # create shifted array (first emlement is doubled and the rest is shifted right)
     shifted = np.concatenate((times[0:1], times[:-1]))
 
     # compute inter arrival time
-    self.df['interArrivalTimeAD'] = times - shifted
+    df['interArrivalTimeAD'] = times - shifted
+
+    return df
 
 
-def add_inter_arrival_time_sd(self) -> None:
-    """Add Inter arrival time single direction column to dataframe.
+def add_inter_arrival_time_sd(df: pd.DataFrame) -> pd.DataFrame:
+    """Add interArrivalTimeSD (single direction) column to dataframe.
 
     Use only packets in same direction.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+
+    Returns
+    -------
+    pd.DataFrame
+        Dataframe with interArrivalTimeSD column.
+
+    Notes
+    -----
+    Should be called after add_communication_direction()
     """
+    assert all(col in df.columns for col in ['relTime', 'masterToSlave'])
 
     # M2S inter arrival times
     # filter only relative times of packets in master to slave direction
-    times = self.df.loc[self.df['masterToSlave'], 'Relative Time'].values
+    times = df.loc[df['masterToSlave'], 'relTime'].values
     shifted = np.concatenate((times[0:1], times[:-1]))
     m2s = times - shifted
 
     # S2M inter arrival times
-    times = self.df.loc[~self.df['masterToSlave'], 'Relative Time'].values
+    times = df.loc[~df['masterToSlave'], 'relTime'].values
     shifted = np.concatenate((times[0:1], times[:-1]))
     s2m = times - shifted
 
-    assert len(m2s) + len(s2m) == len(self.df.index)
+    assert len(m2s) + len(s2m) == len(df.index)
 
     # get masks
-    mask_m2s = self.df['masterToSlave'].values
+    mask_m2s = df['masterToSlave'].values
     mask_s2m = np.invert(mask_m2s)
-    df_len = len(self.df.index)
+    df_len = len(df.index)
 
     # get indices based on masks
     m2s_indices = np.nonzero(mask_m2s)
@@ -161,7 +177,9 @@ def add_inter_arrival_time_sd(self) -> None:
     result[m2s_indices] = m2s
     result[s2m_indices] = s2m
 
-    self.df['interArrivalTimeSD'] = result
+    df['interArrivalTimeSD'] = result
+
+    return df
 
 
 def add_communication_id_l3(df: pd.DataFrame) -> pd.DataFrame:
@@ -226,16 +244,30 @@ def add_communication_id_l4(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def add_communication_direction(self, master_station) -> None:
-    """Add column determining whether the packet was sent from master to slave
+def add_communication_direction(df: pd.DataFrame, master_station_ip: str) -> pd.DataFrame:
+    """Add a bool column 'masterToSlave' determining whether the packet was sent from master to slave.
+
+    True: master -> slave
+    False: slave -> master
 
     Parameters
     ----------
+    df : pd.DataFrame
+        Input dataframe.
     master_station : str
-        ip address in string format of master station, use same format as ip address in dataset
+        Ip address of master station, use same format as ip address in dataset.
+
+    Returns
+    -------
+    pd.DataFrame
+        Dataframe with new 'masterToSlave' column.
     """
-    srcIPs = self.df['srcIP'].values
-    self.df['masterToSlave'] = srcIPs == master_station
+    assert 'srcIp' in df.columns
+
+    srcIPs = df['srcIp'].values
+    df['masterToSlave'] = srcIPs == master_station_ip
+
+    return df
 
 
 def add_relative_days(df: pd.DataFrame) -> pd.DataFrame:

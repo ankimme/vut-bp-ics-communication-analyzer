@@ -19,7 +19,7 @@ def load_data(file_name: str, col_names: FileColumnNames, delimiter: str = None)
                      #  parse_dates=['TimeStamp']
                      )
 
-    df = df.rename(columns={col_names.timestamp: "timeStamp", col_names.src_ip: "srcIp", col_names.dst_ip: "dstIp", col_names.src_port: "srcPort", col_names.dst_port: "dstPort"})
+    df = df.rename(columns={col_names.timestamp: "timeStamp", col_names.rel_time: "relTime", col_names.src_ip: "srcIp", col_names.dst_ip: "dstIp", col_names.src_port: "srcPort", col_names.dst_port: "dstPort"})
 
     # TODO exceptions
     df['timeStamp'] = pd.to_datetime(df['timeStamp'])
