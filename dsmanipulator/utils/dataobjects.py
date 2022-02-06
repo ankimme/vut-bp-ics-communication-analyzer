@@ -31,6 +31,8 @@ class FileColumnNames:
     ----------
     timestamp : str
         Real name of timeStamp column.
+    rel_time : str
+        Real name of relTime column.
     src_ip : str
         Real name of srcIp column.
     dst_ip : str
@@ -42,8 +44,8 @@ class FileColumnNames:
     """
 
     timestamp: str
+    rel_time: str
     src_ip: str
     dst_ip: str
     src_port: str
     dst_port: str
-    # TODO rest
