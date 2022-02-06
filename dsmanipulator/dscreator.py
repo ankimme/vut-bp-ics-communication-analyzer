@@ -8,13 +8,15 @@ from .utils.dataobjects import CommunicationPair
 
 # region Utilities
 
-def convert_to_timeseries(df: pd.DataFrame) -> pd.DataFrame:
+def convert_to_timeseries(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     """Convert timeStamp column to datetime index.
 
     Parameters
     ----------
     df : pd.DataFrame
         Input dataframe.
+    inplace : bool
+        Whether to perform the operation in place on the data.
 
     Returns
     -------
@@ -31,6 +33,9 @@ def convert_to_timeseries(df: pd.DataFrame) -> pd.DataFrame:
     """
     assert 'timeStamp' in df.columns
     assert np.issubdtype(df['timeStamp'].dtype, np.datetime64)
+
+    if not inplace:
+        df = df.copy()
 
     df = df.set_index(pd.DatetimeIndex(df['timeStamp'])).drop(['timeStamp'], axis=1)
     return df
@@ -97,10 +102,10 @@ def find_communication_pairs_l4(df: pd.DataFrame) -> bidict[int, CommunicationPa
 
 # endregion
 
+
 # region Custom column creators
 
-
-def add_inter_arrival_time_ad(df: pd.DataFrame) -> pd.DataFrame:
+def add_inter_arrival_time_ad(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     """Add interArrivalTimeAD (all directions) column to dataframe.
 
     Use all packets. Direction does not matter.
@@ -109,6 +114,8 @@ def add_inter_arrival_time_ad(df: pd.DataFrame) -> pd.DataFrame:
     ----------
     df : pd.DataFrame
         Input dataframe.
+    inplace : bool
+        Whether to perform the operation in place on the data.
 
     Returns
     -------
@@ -116,6 +123,9 @@ def add_inter_arrival_time_ad(df: pd.DataFrame) -> pd.DataFrame:
         Dataframe with interArrivalTimeAD column.
     """
     assert 'relTime' in df.columns
+
+    if not inplace:
+        df = df.copy()
 
     # convert to numpy array
     times = df['relTime'].values
@@ -129,7 +139,7 @@ def add_inter_arrival_time_ad(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def add_inter_arrival_time_sd(df: pd.DataFrame) -> pd.DataFrame:
+def add_inter_arrival_time_sd(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     """Add interArrivalTimeSD (single direction) column to dataframe.
 
     Use only packets in same direction.
@@ -138,6 +148,8 @@ def add_inter_arrival_time_sd(df: pd.DataFrame) -> pd.DataFrame:
     ----------
     df : pd.DataFrame
         Input dataframe.
+    inplace : bool
+        Whether to perform the operation in place on the data.
 
     Returns
     -------
@@ -149,6 +161,9 @@ def add_inter_arrival_time_sd(df: pd.DataFrame) -> pd.DataFrame:
     Should be called after add_communication_direction()
     """
     assert all(col in df.columns for col in ['relTime', 'masterToSlave'])
+
+    if not inplace:
+        df = df.copy()
 
     # M2S inter arrival times
     # filter only relative times of packets in master to slave direction
@@ -182,13 +197,15 @@ def add_inter_arrival_time_sd(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def add_communication_id_l3(df: pd.DataFrame) -> pd.DataFrame:
+def add_communication_id_l3(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     """Add L3 communication id column to dataframe.
 
     Parameters
     ----------
     df : pd.DataFrame
         Input dataframe.
+    inplace : bool
+        Whether to perform the operation in place on the data.
 
     Returns
     -------
@@ -196,6 +213,9 @@ def add_communication_id_l3(df: pd.DataFrame) -> pd.DataFrame:
         Dataframe with new L3 communication ID column.
     """
     assert all(col in df.columns for col in ['srcIp', 'dstIp'])
+
+    if not inplace:
+        df = df.copy()
 
     comm_pairs_l3_bidict = find_communication_pairs_l3(df)
 
@@ -212,13 +232,15 @@ def add_communication_id_l3(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def add_communication_id_l4(df: pd.DataFrame) -> pd.DataFrame:
+def add_communication_id_l4(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     """Add L4 communication id column to dataframe.
 
     Parameters
     ----------
     df : pd.DataFrame
         Input dataframe.
+    inplace : bool
+        Whether to perform the operation in place on the data.
 
     Returns
     -------
@@ -226,6 +248,9 @@ def add_communication_id_l4(df: pd.DataFrame) -> pd.DataFrame:
         Dataframe with new L4 communication ID column.
     """
     assert all(col in df.columns for col in ['srcIp', 'dstIp', 'srcPort', 'dstPort'])
+
+    if not inplace:
+        df = df.copy()
 
     comm_pairs_l4_bidict = find_communication_pairs_l4(df)
 
@@ -244,7 +269,7 @@ def add_communication_id_l4(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def add_communication_direction(df: pd.DataFrame, master_station_ip: str) -> pd.DataFrame:
+def add_communication_direction(df: pd.DataFrame, master_station_ip: str, inplace: bool = False) -> pd.DataFrame:
     """Add a bool column 'masterToSlave' determining whether the packet was sent from master to slave.
 
     True: master -> slave
@@ -256,6 +281,8 @@ def add_communication_direction(df: pd.DataFrame, master_station_ip: str) -> pd.
         Input dataframe.
     master_station : str
         Ip address of master station, use same format as ip address in dataset.
+    inplace : bool
+        Whether to perform the operation in place on the data.
 
     Returns
     -------
@@ -264,13 +291,16 @@ def add_communication_direction(df: pd.DataFrame, master_station_ip: str) -> pd.
     """
     assert 'srcIp' in df.columns
 
+    if not inplace:
+        df = df.copy()
+
     srcIPs = df['srcIp'].values
     df['masterToSlave'] = srcIPs == master_station_ip
 
     return df
 
 
-def add_relative_days(df: pd.DataFrame) -> pd.DataFrame:
+def add_relative_days(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     """Add a realtive day column and update dateTime column.
 
     The relative day will be added to the dateTime column.
@@ -280,6 +310,8 @@ def add_relative_days(df: pd.DataFrame) -> pd.DataFrame:
     ----------
     df : pd.DataFrame
         Input dataframe.
+    inplace : bool
+        Whether to perform the operation in place on the data.
 
     Returns
     -------
@@ -294,8 +326,10 @@ def add_relative_days(df: pd.DataFrame) -> pd.DataFrame:
     -----
     Should be called before convert_to_timeseries()
     """
-
     assert 'timeStamp' in df.columns
+
+    if not inplace:
+        df = df.copy()
 
     # convert to numpy array
     dates = df['timeStamp'].values
@@ -314,5 +348,21 @@ def add_relative_days(df: pd.DataFrame) -> pd.DataFrame:
     df['timeStamp'] = df['timeStamp'].values + relative_days * np.timedelta64(1, 'D')
 
     return df
+
+# endregion
+
+# region Filters
+
+# Vraci df vyfiltrovany podle absolutniho casu (vcetne hranicnich hodnot)
+# def filter_by_time_abs(df: pd.DataFrame, start: datetime, end: datetime) -> pd.DataFrame:
+#     return df[(df['TimeStamp'] >= start) & (df['TimeStamp'] <= end)]
+
+# # Vraci df vyfiltrovany podle relativniho casu (vcetne hranicnich hodnot)
+# def filter_by_time_rel(df: pd.DataFrame, end: float) -> pd.DataFrame:
+#     return filter_by_time_rel(df, 0.0, end)
+
+# def filter_by_time_rel(df: pd.DataFrame, start: float, end: float) -> pd.DataFrame:
+#     return df[(df['Relative Time'] >= start) & (df['Relative Time'] <= end)]
+
 
 # endregion
