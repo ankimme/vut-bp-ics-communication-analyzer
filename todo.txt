@@ -3,3 +3,34 @@ Exceptions: file does not exists
 Strategy pattern for adding custom columns
 
 Inner dictionary for custom column names?
+
+
+
+----------------------------------------------------------------
+
+Jak se stavet k nan hodnotnam v slozenych tabulkach
+
+Filtrac pres query?
+
+Jak na predikci? Linearni regrese?
+Jaky casovy interval?
+
+
+
+----------------------------------------------------------------
+
+
+Počet paketů v intervale a vývoj v jednotlivých časových úsecích. 
+
+
+Nutné sluopce: čas timestamp/relativni, master slave odlišení - bud jeden 1,2,4 sluopce
+Dát dropdown menu => hodnoty kvartilů a možnost volby sigmy
+
+Možno použít pyqt5
+
+Split point inter arrival time
+
+Spíše než predikci udělat statistickou analýzu jestli hodnoty můžou sedět výkyvumů
+Systém arima pro predikci? S časovou řadou
+
+Popsat experimenty na útocích

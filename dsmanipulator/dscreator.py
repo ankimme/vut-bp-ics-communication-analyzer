@@ -15,15 +15,16 @@ def convert_to_timeseries(df: pd.DataFrame, inplace: bool = False) -> pd.DataFra
     ----------
     df : pd.DataFrame
         Input dataframe.
-    inplace : bool
+    inplace : bool, optional
         Whether to perform the operation in place on the data.
+        by default False
 
     Returns
     -------
     pd.DataFrame
         Dataframe with converted index.
 
-    Precondition
+    Preconditions
     ------------
     Dataframe must have column 'timeStamp' of np.datetime64 type (or its subtype).
 
@@ -37,7 +38,8 @@ def convert_to_timeseries(df: pd.DataFrame, inplace: bool = False) -> pd.DataFra
     if not inplace:
         df = df.copy()
 
-    df = df.set_index(pd.DatetimeIndex(df['timeStamp'])).drop(['timeStamp'], axis=1)
+    df = df.set_index(pd.DatetimeIndex(df['timeStamp'])).drop(
+        ['timeStamp'], axis=1)
     return df
 
 
@@ -65,7 +67,8 @@ def find_communication_pairs_l3(df: pd.DataFrame) -> bidict[int, CommunicationPa
 
     # get all combinations of ips occuring in the dataframe
     list_of_tuples = df.loc[:, ['srcIp', 'dstIp']].value_counts().index.values
-    list_of_pairs = list(map(lambda x: CommunicationPair(x[0], x[1]), list_of_tuples))
+    list_of_pairs = list(
+        map(lambda x: CommunicationPair(x[0], x[1]), list_of_tuples))
     ids = np.arange(1, len(list_of_pairs) + 1, dtype=np.int64)
 
     return bidict(zip(ids, list_of_pairs))
@@ -91,11 +94,14 @@ def find_communication_pairs_l4(df: pd.DataFrame) -> bidict[int, CommunicationPa
         Key: new id of communication pair
         Value: communication pair
     """
-    assert all(col in df.columns for col in ['srcIp', 'dstIp', 'srcPort', 'dstPort'])
+    assert all(col in df.columns for col in [
+               'srcIp', 'dstIp', 'srcPort', 'dstPort'])
 
     # get all combinations of ips occuring in the dataframe
-    list_of_tuples = df.loc[:, ['srcIp', 'dstIp', 'srcPort', 'dstPort']].value_counts().index.values
-    list_of_pairs = list(map(lambda x: CommunicationPair(x[0], x[1], x[2], x[3]), list_of_tuples))
+    list_of_tuples = df.loc[:, ['srcIp', 'dstIp',
+                                'srcPort', 'dstPort']].value_counts().index.values
+    list_of_pairs = list(map(lambda x: CommunicationPair(
+        x[0], x[1], x[2], x[3]), list_of_tuples))
     ids = np.arange(1, len(list_of_pairs) + 1, dtype=np.int64)
 
     return bidict(zip(ids, list_of_pairs))
@@ -114,8 +120,9 @@ def add_inter_arrival_time_ad(df: pd.DataFrame, inplace: bool = False) -> pd.Dat
     ----------
     df : pd.DataFrame
         Input dataframe.
-    inplace : bool
+    inplace : bool, optional
         Whether to perform the operation in place on the data.
+        by default False
 
     Returns
     -------
@@ -148,8 +155,9 @@ def add_inter_arrival_time_sd(df: pd.DataFrame, inplace: bool = False) -> pd.Dat
     ----------
     df : pd.DataFrame
         Input dataframe.
-    inplace : bool
+    inplace : bool, optional
         Whether to perform the operation in place on the data.
+        by default False
 
     Returns
     -------
@@ -204,8 +212,9 @@ def add_communication_id_l3(df: pd.DataFrame, inplace: bool = False) -> pd.DataF
     ----------
     df : pd.DataFrame
         Input dataframe.
-    inplace : bool
+    inplace : bool, optional
         Whether to perform the operation in place on the data.
+        by default False
 
     Returns
     -------
@@ -239,15 +248,17 @@ def add_communication_id_l4(df: pd.DataFrame, inplace: bool = False) -> pd.DataF
     ----------
     df : pd.DataFrame
         Input dataframe.
-    inplace : bool
+    inplace : bool, optional
         Whether to perform the operation in place on the data.
+        by default False
 
     Returns
     -------
     pd.DataFrame
         Dataframe with new L4 communication ID column.
     """
-    assert all(col in df.columns for col in ['srcIp', 'dstIp', 'srcPort', 'dstPort'])
+    assert all(col in df.columns for col in [
+               'srcIp', 'dstIp', 'srcPort', 'dstPort'])
 
     if not inplace:
         df = df.copy()
@@ -281,8 +292,9 @@ def add_communication_direction(df: pd.DataFrame, master_station_ip: str, inplac
         Input dataframe.
     master_station : str
         Ip address of master station, use same format as ip address in dataset.
-    inplace : bool
+    inplace : bool, optional
         Whether to perform the operation in place on the data.
+        by default False
 
     Returns
     -------
@@ -310,15 +322,16 @@ def add_relative_days(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     ----------
     df : pd.DataFrame
         Input dataframe.
-    inplace : bool
+    inplace : bool, optional
         Whether to perform the operation in place on the data.
+        by default False
 
     Returns
     -------
     pd.DataFrame
         Dataframe with new 'relativeDay' column and updated 'timeStamp' column.
 
-    Precondition
+    Preconditions
     ------------
     Dataframe must have column 'timeStamp' of np.datetime64 type (or its subtype).
 
@@ -345,9 +358,57 @@ def add_relative_days(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     df['relativeDay'] = relative_days
 
     # add relative day to timestamp column
-    df['timeStamp'] = df['timeStamp'].values + relative_days * np.timedelta64(1, 'D')
+    df['timeStamp'] = df['timeStamp'].values + \
+        relative_days * np.timedelta64(1, 'D')
 
     return df
+
+
+def expand_values_to_columns(df: pd.DataFrame, col_name: str, inplace: bool = False, drop_column: bool = True) -> pd.DataFrame:
+    """Expand column values to independent columns.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+    col_name : str
+        Name of column to be expanded.
+    inplace : bool, optional
+        Whether to perform the operation in place on the data.
+        by default False
+    drop_column : bool, optional
+        Drop the original column.
+        by default True
+
+    Returns
+    -------
+    pd.DataFrame
+        Dataframe with a new column for each values of the original column.
+
+    Notes
+    -----
+    NaN values are ignored.
+    """
+    assert col_name in df.columns
+
+    if not inplace:
+        df = df.copy()
+
+    original_values = df[col_name].values
+
+    unique_values = original_values.unique()
+
+    # drop nans in arrays of all types
+    unique_values = unique_values[unique_values == unique_values]
+
+    for value in unique_values:
+        df[f"{col_name}:{value}"] = original_values == value
+
+    if drop_column:
+        df.drop(col_name, axis=1)
+
+    return df
+
 
 # endregion
 
@@ -363,6 +424,5 @@ def add_relative_days(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
 
 # def filter_by_time_rel(df: pd.DataFrame, start: float, end: float) -> pd.DataFrame:
 #     return df[(df['Relative Time'] >= start) & (df['Relative Time'] <= end)]
-
 
 # endregion

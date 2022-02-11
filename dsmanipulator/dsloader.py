@@ -1,5 +1,4 @@
 import csv
-from numpy import clongdouble
 import pandas as pd
 
 from .utils.dataobjects import FileColumnNames
@@ -15,11 +14,14 @@ def load_data(file_name: str, col_names: FileColumnNames, delimiter: str = None)
 
     df = pd.read_csv(file_name,
                      sep=delimiter,
-                     #  dtype={'asduType': 'category', 'numix': 'category', 'cot': 'category', 'uType': 'category', 'oa': 'category'},
+                     # TODO dynamically
+                     dtype={'asduType': 'category', 'numix': 'category',
+                            'cot': 'category', 'uType': 'category', 'oa': 'category'},
                      #  parse_dates=['TimeStamp']
                      )
 
-    df = df.rename(columns={col_names.timestamp: "timeStamp", col_names.rel_time: "relTime", col_names.src_ip: "srcIp", col_names.dst_ip: "dstIp", col_names.src_port: "srcPort", col_names.dst_port: "dstPort"})
+    df = df.rename(columns={col_names.timestamp: "timeStamp", col_names.rel_time: "relTime", col_names.src_ip: "srcIp",
+                            col_names.dst_ip: "dstIp", col_names.src_port: "srcPort", col_names.dst_port: "dstPort"})
 
     # TODO exceptions
     df['timeStamp'] = pd.to_datetime(df['timeStamp'])
