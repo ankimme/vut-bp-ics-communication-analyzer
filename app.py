@@ -4,7 +4,7 @@ import sys
 import os
 import pandas as pd
 from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QVBoxLayout, QWidget, QTableView, QTextEdit, QFileDialog, QErrorMessage, QToolBar, QGridLayout, QPushButton
+from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QVBoxLayout, QWidget, QTableView, QTextEdit, QFileDialog, QErrorMessage, QToolBar, QGridLayout, QPushButton, QTabWidget
 from PyQt6.QtGui import QIcon, QAction, QPalette, QColor
 
 import dsmanipulator.dsloader as dsl
@@ -96,8 +96,6 @@ class InfoLabel(QLabel):
         new_value : str | int | float
             A new value the label will display.
         """
-        new_value = 2.498746546987  # TODO delete
-
         if type(new_value) == float:
             self.setText(f"{self._property}: {new_value:.3f}")
         else:
@@ -128,29 +126,29 @@ class MainWindow(QMainWindow):
 
         self.init_toolbar()
 
-        main_layout = QVBoxLayout()
+        tabs = QTabWidget()
+        # tabs.setTabPosition(QTabWidget.West)
+        tabs.setMovable(True)
+
+        primary_layout = QVBoxLayout()
 
         self.file_name_label = QLabel()
-        main_layout.addWidget(self.file_name_label)
+        primary_layout.addWidget(self.file_name_label)
 
         # LAYOUT TOP #
         info_panel_layout = QGridLayout()
 
-        # info_panel_layout.setHorizontalSpacing(20)
+        self.entries = InfoLabel("Entries")
+        info_panel_layout.addWidget(self.entries, 0, 0)
 
-        info_panel_layout.addWidget(InfoLabel("a"), 0, 0)
+        self.column_count = InfoLabel("Columns")
+        info_panel_layout.addWidget(self.column_count, 0, 1)
 
         for i in range(info_panel_layout.columnCount()):
             info_panel_layout.setColumnStretch(i, 1)
 
-        # info_panel_layout.addWidget(QPushButton("Button at (2, 0)"), 2, 0)
-
-        # info_panel_layout.addWidget(QPushButton("Button at (2, 1)"), 2, 1)
-
-        # info_panel_layout.addWidget(QPushButton("Button at (2, 2)"), 2, 2)
-
         info_panel_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addLayout(info_panel_layout)
+        primary_layout.addLayout(info_panel_layout)
 
         # LAYOUT BOTTOM #
         self.df_table_view = QTableView()
@@ -158,11 +156,13 @@ class MainWindow(QMainWindow):
         self.df_table_view.setAlternatingRowColors(True)
         self.df_table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
 
-        main_layout.addWidget(self.df_table_view)
+        primary_layout.addWidget(self.df_table_view)
 
-        centralWidget = QWidget()
-        centralWidget.setLayout(main_layout)
-        self.setCentralWidget(centralWidget)
+        primary_widget = QWidget()
+        primary_widget.setLayout(primary_layout)
+
+        tabs.addTab(primary_widget, "Primary view")
+        self.setCentralWidget(tabs)
 
     # def create_actions(self) -> dict[str, QAction]: # TODO uncomment on python 3.9
 
@@ -215,10 +215,16 @@ class MainWindow(QMainWindow):
                 model = PandasModel(self.df)
                 self.df_table_view.setModel(model)
                 self.file_name_label.setText(os.path.basename(file_path))
+                self.update_stats()
             except Exception:  # TODO odstranit tuhle nehezkou vec
                 error_dialog = QErrorMessage()
                 error_dialog.showMessage('An error occurred while loading data')
                 error_dialog.exec()
+
+    def update_stats(self) -> None:
+        self.entries.set_value(len(self.df.index))
+        self.column_count.set_value(len(self.df.columns))
+
 
 
 if __name__ == '__main__':
