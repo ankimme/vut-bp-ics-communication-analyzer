@@ -4,7 +4,7 @@ import sys
 import os
 import pandas as pd
 from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QVBoxLayout, QWidget, QTableView, QTextEdit, QFileDialog, QErrorMessage, QToolBar, QGridLayout, QPushButton, QTabWidget
+from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QVBoxLayout, QWidget, QTableView, QTextEdit, QFileDialog, QErrorMessage, QToolBar, QGridLayout, QPushButton, QTabWidget, QDialog, QDialogButtonBox, QStackedLayout, QWizard, QComboBox, QWizardPage
 from PyQt6.QtGui import QIcon, QAction, QPalette, QColor
 
 import dsmanipulator.dsloader as dsl
@@ -128,14 +128,32 @@ class MainWindow(QMainWindow):
 
         tabs = QTabWidget()
         # tabs.setTabPosition(QTabWidget.West)
-        tabs.setMovable(True)
+        # tabs.setMovable(True)
 
-        primary_layout = QVBoxLayout()
+        primary_widget = QWidget()
+        primary_layout = self.create_primary_layout()
+        primary_widget.setLayout(primary_layout)
 
+        secondary_widget = QWidget()
+        secondary_layout = self.create_secondary_layout()
+        secondary_widget.setLayout(secondary_layout)
+
+        tabs.addTab(primary_widget, "Primary view")
+        tabs.addTab(secondary_widget, "Secondary view")
+        self.setCentralWidget(tabs)
+
+        dialog = OpenCsv() # TODO delete
+        dialog.exec()
+
+    def create_primary_layout(self) -> QVBoxLayout:
+        # TODO add vars to doc
+        layout = QVBoxLayout()
+
+        # add file name info on top
         self.file_name_label = QLabel()
-        primary_layout.addWidget(self.file_name_label)
+        layout.addWidget(self.file_name_label)
 
-        # LAYOUT TOP #
+        # LAYOUT TOP - INFORMATION PANEL #
         info_panel_layout = QGridLayout()
 
         self.entries = InfoLabel("Entries")
@@ -144,29 +162,49 @@ class MainWindow(QMainWindow):
         self.column_count = InfoLabel("Columns")
         info_panel_layout.addWidget(self.column_count, 0, 1)
 
+        # set maximum stretch for all columns
         for i in range(info_panel_layout.columnCount()):
             info_panel_layout.setColumnStretch(i, 1)
 
         info_panel_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        primary_layout.addLayout(info_panel_layout)
+        layout.addLayout(info_panel_layout)
 
-        # LAYOUT BOTTOM #
+        # LAYOUT BOTTOM - DATAFRAME VIEW #
         self.df_table_view = QTableView()
         self.df_table_view.horizontalHeader().setStretchLastSection(True)
         self.df_table_view.setAlternatingRowColors(True)
         self.df_table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
 
-        primary_layout.addWidget(self.df_table_view)
+        layout.addWidget(self.df_table_view)
 
-        primary_widget = QWidget()
-        primary_widget.setLayout(primary_layout)
+        return layout
 
-        tabs.addTab(primary_widget, "Primary view")
-        self.setCentralWidget(tabs)
+    def create_secondary_layout(self) -> QVBoxLayout:
+        # TODO add vars to doc
+        layout = QVBoxLayout()
 
-    # def create_actions(self) -> dict[str, QAction]: # TODO uncomment on python 3.9
+        layout.addWidget(QLabel("zakladni info"))
+        layout.addWidget(QLabel("filtry"))
+        layout.addWidget(QLabel("menu pro tvorbu grafu"))
+        # layout.addWidget(QLabel("data"))
+        # add file name info on top
+        # self.file_name_label = QLabel() TODO duplicate label
+        # layout.addWidget(self.file_name_label)
 
-    def create_actions(self):
+        # LAYOUT TOP - INFORMATION PANEL #
+        # info_panel_layout = QGridLayout()
+
+        # LAYOUT BOTTOM - DATAFRAME VIEW # # TODO RENAME
+        self.dff_table_view = QTableView()
+        # self.dff_table_view.horizontalHeader().setStretchLastSection(True)
+        # self.dff_table_view.setAlternatingRowColors(True)
+        # self.dff_table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
+
+        layout.addWidget(self.dff_table_view)
+
+        return layout
+
+    def create_actions(self) -> dict[str, QAction]:
         """Define QActions.
 
         Returns
@@ -209,28 +247,141 @@ class MainWindow(QMainWindow):
         file_path, _ = QFileDialog.getOpenFileName(parent=self, caption='Open file', filter='CSV files (*.csv *.txt)')
 
         if file_path:
-            try:
-                self.df = dsl.load_data(file_path, FileColumnNames(
-                    "TimeStamp", "Relative Time", "srcIP", "dstIP", "srcPort", "dstPort"))
-                model = PandasModel(self.df)
-                self.df_table_view.setModel(model)
-                self.file_name_label.setText(os.path.basename(file_path))
-                self.update_stats()
-            except Exception:  # TODO odstranit tuhle nehezkou vec
-                error_dialog = QErrorMessage()
-                error_dialog.showMessage('An error occurred while loading data')
-                error_dialog.exec()
+            dialog = OpenCsv()
+            dialog.exec()
+            # try:
+            #     dialog = OpenCsv()
+            #     dialog.exec()
+
+            #     self.df = dsl.load_data(file_path, FileColumnNames(
+            #         "TimeStamp", "Relative Time", "srcIP", "dstIP", "srcPort", "dstPort"))
+            #     model = PandasModel(self.df)
+            #     self.df_table_view.setModel(model)
+            #     self.file_name_label.setText(os.path.basename(file_path))
+            #     self.update_stats()
+            # except Exception:  # TODO odstranit tuhle nehezkou vec
+            #     error_dialog = QErrorMessage()
+            #     error_dialog.showMessage('An error occurred while loading data')
+            #     error_dialog.exec()
 
     def update_stats(self) -> None:
+        # TODO doc
         self.entries.set_value(len(self.df.index))
         self.column_count.set_value(len(self.df.columns))
+
+
+class OpenCsv(QDialog):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Load data from CSV")
+
+        stacked_layout = QStackedLayout()
+
+        # PAGE 1 - set delimiter #
+
+        self.page1 = QWidget()
+        layout1 = QVBoxLayout()
+        layout1.addWidget(QLabel("ahoj"))
+        layout1.addWidget(QLabel("ahoj"))
+        self.page1.setLayout(layout1)
+
+
+
+        # delimiter = dsl.detect_delimiter()
+        
+
+
+        # PAGE 2 - set column data types #
+
+        self.page2 = QWidget()
+        layout2 = QVBoxLayout()
+        layout2.addWidget(QLabel("ahoj"))
+        layout2.addWidget(QLabel("ahoj"))
+        layout2.addWidget(QLabel("ahoj"))
+        self.page2.setLayout(layout2)
+
+
+
+
+        # Add pages to stacked widget #
+        stacked_layout.addWidget(self.page1)
+        stacked_layout.addWidget(self.page2)
+
+
+        self.setLayout(stacked_layout)
+
+        # QBtn = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+
+        # self.buttonBox = QDialogButtonBox(QBtn)
+        # self.buttonBox.accepted.connect(self.accept)
+        # self.buttonBox.rejected.connect(self.reject)
+
+        # self.layout = QVBoxLayout()
+
+        # dsl.
+
+
+        # message = QLabel("Something happened, is that OK?")
+        # self.layout.addWidget(message)
+        # self.layout.addWidget(self.buttonBox)
+        # self.setLayout(self.layout)
+
+
+
+
+
+
+
+
+class QIComboBox(QComboBox):
+    def __init__(self,parent=None):
+        super(QIComboBox, self).__init__(parent)
+
+
+class MagicWizard(QWizard):
+    def __init__(self, parent=None):
+        super(MagicWizard, self).__init__(parent)
+        self.addPage(Page1(self))
+        self.addPage(Page2(self))
+        self.setWindowTitle("PyQt5 Wizard Example - pythonspot.com")
+        self.resize(640,480)
+
+class Page1(QWizardPage):
+    def __init__(self, parent=None):
+        super(Page1, self).__init__(parent)
+        self.comboBox = QIComboBox(self)
+        self.comboBox.addItem("Python","/path/to/filename1")
+        self.comboBox.addItem("PyQt5","/path/to/filename2")
+        layout = QVBoxLayout()
+        layout.addWidget(self.comboBox)
+        self.setLayout(layout)
+
+
+class Page2(QWizardPage):
+    def __init__(self, parent=None):
+        super(Page2, self).__init__(parent)
+        self.label1 = QLabel()
+        self.label2 = QLabel()
+        layout = QVBoxLayout()
+        layout.addWidget(self.label1)
+        layout.addWidget(self.label2)
+        self.setLayout(layout)
+
+    def initializePage(self):
+        self.label1.setText("Example text")
+        self.label2.setText("Example text")
+
 
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
 
-    window = MainWindow()
-    window.show()
+    # window = MainWindow()
+    # window.show()
+
+    wizard = MagicWizard()
+    wizard.show()
 
     app.exec()

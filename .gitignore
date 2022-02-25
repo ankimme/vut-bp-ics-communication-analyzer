@@ -8,3 +8,6 @@ env/
 # pycache
 __pycache__/
 *.py[cod]
+
+# vscode
+settings.json
