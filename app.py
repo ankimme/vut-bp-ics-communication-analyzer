@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
+import csv
+from fileinput import filename
 import sys
 import os
 import pandas as pd
-from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QVBoxLayout, QWidget, QTableView, QTextEdit, QFileDialog, QErrorMessage, QToolBar, QGridLayout, QPushButton, QTabWidget, QDialog, QDialogButtonBox, QStackedLayout, QWizard, QComboBox, QWizardPage
+from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex, QAbstractListModel
+from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QVBoxLayout, QWidget, QTableView, QTextEdit, QFileDialog, QErrorMessage, QToolBar, QGridLayout, QPushButton, QTabWidget, QDialog, QDialogButtonBox, QStackedLayout, QWizard, QComboBox, QWizardPage, QFormLayout, QCheckBox, QListWidget, QListView, QHBoxLayout
 from PyQt6.QtGui import QIcon, QAction, QPalette, QColor
 
 import dsmanipulator.dsloader as dsl
@@ -142,7 +144,7 @@ class MainWindow(QMainWindow):
         tabs.addTab(secondary_widget, "Secondary view")
         self.setCentralWidget(tabs)
 
-        dialog = OpenCsv() # TODO delete
+        dialog = OpenCsv()  # TODO delete
         dialog.exec()
 
     def create_primary_layout(self) -> QVBoxLayout:
@@ -286,11 +288,7 @@ class OpenCsv(QDialog):
         layout1.addWidget(QLabel("ahoj"))
         self.page1.setLayout(layout1)
 
-
-
         # delimiter = dsl.detect_delimiter()
-        
-
 
         # PAGE 2 - set column data types #
 
@@ -301,13 +299,9 @@ class OpenCsv(QDialog):
         layout2.addWidget(QLabel("ahoj"))
         self.page2.setLayout(layout2)
 
-
-
-
         # Add pages to stacked widget #
         stacked_layout.addWidget(self.page1)
         stacked_layout.addWidget(self.page2)
-
 
         self.setLayout(stacked_layout)
 
@@ -321,58 +315,164 @@ class OpenCsv(QDialog):
 
         # dsl.
 
-
         # message = QLabel("Something happened, is that OK?")
         # self.layout.addWidget(message)
         # self.layout.addWidget(self.buttonBox)
         # self.setLayout(self.layout)
 
 
+class OpenCsvWizard(QWizard):
 
+    def __init__(self, file_name: str, parent: QWidget = None):
+        super().__init__(parent)
 
+        self.setWindowTitle("Load data from CSV")
+        self.dialect = dsl.detect_dialect(file_name)
+        self.addPage(Page1(file_name=file_name, dialect=self.dialect, parent=self))
+        self.addPage(Page2(file_name=file_name, dialect=self.dialect, parent=self))
 
-
-
-
-class QIComboBox(QComboBox):
-    def __init__(self,parent=None):
-        super(QIComboBox, self).__init__(parent)
-
-
-class MagicWizard(QWizard):
-    def __init__(self, parent=None):
-        super(MagicWizard, self).__init__(parent)
-        self.addPage(Page1(self))
-        self.addPage(Page2(self))
-        self.setWindowTitle("PyQt5 Wizard Example - pythonspot.com")
-        self.resize(640,480)
 
 class Page1(QWizardPage):
-    def __init__(self, parent=None):
-        super(Page1, self).__init__(parent)
-        self.comboBox = QIComboBox(self)
-        self.comboBox.addItem("Python","/path/to/filename1")
-        self.comboBox.addItem("PyQt5","/path/to/filename2")
+
+    def __init__(self, file_name: str, dialect: csv.Dialect, parent: QWidget = None):
+        super().__init__(parent)
+        self.file_name = file_name
+        self.dialect = dialect
+
+        self.setSubTitle("Set CSV dialect")
+
         layout = QVBoxLayout()
-        layout.addWidget(self.comboBox)
+
+        form_layout = QFormLayout()
+
+        # Delimiter #
+        self.delimiter_line_edit = QLineEdit()
+        self.delimiter_line_edit.setMaxLength(1)
+        self.delimiter_line_edit.textEdited.connect(self.delimiter_line_edit_changed)
+        form_layout.addRow(QLabel("Delimiter:"), self.delimiter_line_edit)
+
+        """ TODO uncomment
+        # Quote char #
+        self.quote_char_line_edit = QLineEdit()
+        self.quote_char_line_edit.setMaxLength(1)
+        self.quote_char_line_edit.textEdited.connect(self.quote_char_line_edit_changed)
+        form_layout.addRow(QLabel("Quote character:"), self.quote_char_line_edit)
+
+        # Escape char #
+        self.escape_char_line_edit = QLineEdit()
+        self.escape_char_line_edit.setMaxLength(1)
+        self.escape_char_line_edit.textEdited.connect(self.escape_char_line_edit_changed)
+        form_layout.addRow(QLabel("Escape character:"), self.escape_char_line_edit)
+
+        # Doublequote #
+        self.doublequote_check_box = QCheckBox()
+        self.doublequote_check_box.toggled.connect(self.doublequote_check_box_changed)
+        form_layout.addRow(QLabel("Double quote:"), self.doublequote_check_box)
+
+        # TODO engine selection c/python
+        """
+
+        layout.addLayout(form_layout)
+
+        layout.addWidget(QLabel("Columns:"))
+
+        self.columns_view = QListView()
+        self.columns_model = ListModel()
+        self.columns_view.setModel(self.columns_model)
+
+        layout.addWidget(self.columns_view)
+
+        # Warning #
+        self.warning_label = QLabel()
+        self.warning_label.setStyleSheet("QLabel { color: red }")
+        layout.addWidget(self.warning_label)
+
         self.setLayout(layout)
+
+        # self.dialect.strict = True # TODO enable?
+
+    def initializePage(self):
+        self.delimiter_line_edit.setText(self.dialect.delimiter)
+        """ TODO uncomment
+        self.doublequote_check_box.setChecked(self.dialect.doublequote)
+        self.escape_char_line_edit.setText(self.dialect.escapechar)
+        self.quote_char_line_edit.setText(self.dialect.quotechar)
+        """
+        self.update_column_preview()
+
+    def delimiter_line_edit_changed(self):
+        self.dialect.delimiter = self.delimiter_line_edit.text() or None
+        self.update_column_preview()
+
+    """ TODO uncomment
+    def quote_char_line_edit_changed(self):
+        self.dialect.quotechar = self.quote_char_line_edit.text() or None
+        self.update_column_preview()
+
+    def escape_char_line_edit_changed(self):
+        self.dialect.escapechar = self.escape_char_line_edit.text() or None
+        self.update_column_preview()
+
+    def doublequote_check_box_changed(self):
+        self.dialect.doublequote = self.doublequote_check_box.isChecked()
+        self.update_column_preview()
+    """
+
+    def update_column_preview(self):
+        try:
+            self.columns_model.items = list(dsl.detect_columns(self.file_name, self.dialect).keys())
+            self.warning_label.clear()
+            self.completeChanged.emit()
+        except (pd.errors.ParserError, TypeError):
+            self.columns_model.items = []
+            self.warning_label.setText("Could not parse csv columns with given dialect.")
+            self.completeChanged.emit()
+
+        self.columns_model.layoutChanged.emit()
+
+    def isComplete(self) -> bool:
+        return bool(self.delimiter_line_edit.text()) and bool(self.columns_model.items)
+
+
+class ListModel(QAbstractListModel):
+    def __init__(self, *args, items=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.items = items or []
+
+    def data(self, index, role):
+        if role == Qt.ItemDataRole.DisplayRole:
+            return self.items[index.row()]
+
+    def rowCount(self, index):
+        return len(self.items)
 
 
 class Page2(QWizardPage):
-    def __init__(self, parent=None):
-        super(Page2, self).__init__(parent)
-        self.label1 = QLabel()
-        self.label2 = QLabel()
-        layout = QVBoxLayout()
-        layout.addWidget(self.label1)
-        layout.addWidget(self.label2)
-        self.setLayout(layout)
+    def __init__(self, file_name: str, dialect: csv.Dialect, parent: QWidget = None):
+        super().__init__(parent)
+        self.file_name = file_name
+        self.dialect = dialect
+        self.layout = QVBoxLayout()
+        self.setLayout(self.layout)
 
-    def initializePage(self):
-        self.label1.setText("Example text")
-        self.label2.setText("Example text")
+    def initializePage(self) -> None:
+        for col_name, col_type in dsl.detect_columns(self.file_name, self.dialect).items():
+            row = QHBoxLayout()
+            row.addWidget(QLabel(col_name))
+            row.addWidget(TypeComboBox(col_type))
+            print(type(col_type))
+            self.layout.addLayout(row)
+
+    def cleanupPage(self) -> None:
+        for i in reversed(range(self.layout.count())):
+            self.layout.itemAt(i).widget().setParent(None)
 
 
+class TypeComboBox(QComboBox):
+    def __init__(self, type, parent: QWidget = None):
+        super().__init__(parent)
+        self.insertItems(0, ["object", "int"])  # TODO and so on
+        self.currentText = str(type)
 
 
 if __name__ == '__main__':
@@ -381,7 +481,7 @@ if __name__ == '__main__':
     # window = MainWindow()
     # window.show()
 
-    wizard = MagicWizard()
+    wizard = OpenCsvWizard("data/mega104-14-12-18-ioa.csv")
     wizard.show()
 
     app.exec()

@@ -4,6 +4,7 @@ pozn.txt
 
 # environment
 env/
+env_old/
 
 # pycache
 __pycache__/

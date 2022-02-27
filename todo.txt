@@ -43,3 +43,6 @@ pocet zarizeni a pocet dvojice s rozkliknutim na podrobnosti
 
 
 workflow
+
+
+change parser
