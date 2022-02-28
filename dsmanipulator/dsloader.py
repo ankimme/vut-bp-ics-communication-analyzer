@@ -5,7 +5,7 @@ import pandas as pd
 from .utils.dataobjects import FileColumnNames
 
 
-def load_data(file_name: str, col_names: FileColumnNames, delimiter: str = None) -> pd.DataFrame:
+def load_data(file_name: str, col_names: FileColumnNames, dialect: csv.Dialect, row_limit: int = 10000) -> pd.DataFrame:
     # todo df must have 'srcIP', 'srcPort', 'dstIP', 'dstPort', 'TimeStamp'
     # todo TimeStamp ve fromatu format="%H:%M:%S.%f"
     # todo check if file exists
@@ -14,7 +14,7 @@ def load_data(file_name: str, col_names: FileColumnNames, delimiter: str = None)
         delimiter = detect_delimiter(file_name)
 
     df = pd.read_csv(file_name,
-                     sep=delimiter,
+                     dialect=dialect,
                      # TODO dynamically
                      dtype={'asduType': 'category', 'numix': 'category',
                             'cot': 'category', 'uType': 'category', 'oa': 'category'},

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 import csv
-from fileinput import filename
 import sys
-import os
+from bidict import bidict
+import numpy as np
 import pandas as pd
+
 from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex, QAbstractListModel
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QVBoxLayout, QWidget, QTableView, QTextEdit, QFileDialog, QErrorMessage, QToolBar, QGridLayout, QPushButton, QTabWidget, QDialog, QDialogButtonBox, QStackedLayout, QWizard, QComboBox, QWizardPage, QFormLayout, QCheckBox, QListWidget, QListView, QHBoxLayout
+from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QVBoxLayout, QWidget, QTableView, QTextEdit, QFileDialog, QErrorMessage, QToolBar, QGridLayout, QPushButton, QTabWidget, QDialog, QDialogButtonBox, QStackedLayout, QWizard, QComboBox, QWizardPage, QFormLayout, QCheckBox, QListWidget, QListView, QHBoxLayout, QRadioButton, QButtonGroup
 from PyQt6.QtGui import QIcon, QAction, QPalette, QColor
 
 import dsmanipulator.dsloader as dsl
@@ -453,26 +454,54 @@ class Page2(QWizardPage):
         self.file_name = file_name
         self.dialect = dialect
         self.layout = QVBoxLayout()
+
+        # self.warning_label = QLabel()
+        # self.warning_label.setStyleSheet("QLabel { color: red }")
+        # self.layout.addWidget(self.warning_label)
+
         self.setLayout(self.layout)
 
     def initializePage(self) -> None:
+        g1 = QButtonGroup(self)
+        g2 = QButtonGroup(self)
         for col_name, col_type in dsl.detect_columns(self.file_name, self.dialect).items():
             row = QHBoxLayout()
             row.addWidget(QLabel(col_name))
+
+            # w = TypeComboBox(col_type)
+            # w.currentIndexChanged.connect(self.type_changed)
             row.addWidget(TypeComboBox(col_type))
-            print(type(col_type))
+
+            row.addWidget(QLabel(str(col_type)))
+
+            r1 = QRadioButton()
+            g1.addButton(r1)
+            row.addWidget(r1)
+
+            r2 = QRadioButton()
+            g2.addButton(r2)
+            row.addWidget(r2)
+
             self.layout.addLayout(row)
 
     def cleanupPage(self) -> None:
-        for i in reversed(range(self.layout.count())):
-            self.layout.itemAt(i).widget().setParent(None)
+        self.layout = QVBoxLayout()
+
+    def type_changed(self):
+        try:
+            dsl.load_data(self.file_name, self.dialect)
+
+            self.warning_label.clear()
+        except:
+            self.warning_label.setText("Invalid based on first 100 rows")
 
 
 class TypeComboBox(QComboBox):
     def __init__(self, type, parent: QWidget = None):
         super().__init__(parent)
-        self.insertItems(0, ["object", "int"])  # TODO and so on
-        self.currentText = str(type)
+        types = ['object', 'int', 'float', 'bool', 'datetime', 'timedelta', 'category']
+        self.insertItems(0, types)  # TODO and so on
+        self.setCurrentIndex(types.index(type))
 
 
 if __name__ == '__main__':
