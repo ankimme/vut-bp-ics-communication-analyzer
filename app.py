@@ -1,13 +1,43 @@
 #!/usr/bin/env python3
 
 import csv
+import os
 import sys
+from typing import Any
 from bidict import bidict
 import numpy as np
 import pandas as pd
 
-from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex, QAbstractListModel
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QVBoxLayout, QWidget, QTableView, QTextEdit, QFileDialog, QErrorMessage, QToolBar, QGridLayout, QPushButton, QTabWidget, QDialog, QDialogButtonBox, QStackedLayout, QWizard, QComboBox, QWizardPage, QFormLayout, QCheckBox, QListWidget, QListView, QHBoxLayout, QRadioButton, QButtonGroup
+from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex, QAbstractListModel, pyqtSlot
+from PyQt6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QLabel,
+    QLineEdit,
+    QVBoxLayout,
+    QWidget,
+    QTableView,
+    QTextEdit,
+    QFileDialog,
+    QErrorMessage,
+    QToolBar,
+    QGridLayout,
+    QPushButton,
+    QTabWidget,
+    QDialog,
+    QDialogButtonBox,
+    QStackedLayout,
+    QWizard,
+    QComboBox,
+    QWizardPage,
+    QFormLayout,
+    QCheckBox,
+    QListWidget,
+    QListView,
+    QHBoxLayout,
+    QRadioButton,
+    QButtonGroup,
+)
 from PyQt6.QtGui import QIcon, QAction, QPalette, QColor
 
 import dsmanipulator.dsloader as dsl
@@ -15,17 +45,19 @@ import dsmanipulator.dscreator as dsc
 import dsmanipulator.dsanalyzer as dsa
 from dsmanipulator.utils.dataobjects import FileColumnNames
 
+# region Models
+
 
 # https://doc.qt.io/qtforpython/examples/example_external__pandas.html
 class PandasModel(QAbstractTableModel):
-    """A model to interface a Qt view with pandas dataframe """
+    """A model to interface a Qt view with pandas dataframe"""
 
     def __init__(self, dataframe: pd.DataFrame, parent=None):
         QAbstractTableModel.__init__(self, parent)
         self._dataframe = dataframe
 
     def rowCount(self, parent=QModelIndex()) -> int:
-        """ Override method from QAbstractTableModel
+        """Override method from QAbstractTableModel
 
         Return row count of the pandas DataFrame
         """
@@ -72,6 +104,367 @@ class PandasModel(QAbstractTableModel):
         return None
 
 
+class ListModel(QAbstractListModel):
+    """AbstractionListModel of a simple list."""
+
+    def __init__(self, *args, items=None, **kwargs) -> None:
+        """Initialize a ListModel object.
+
+        Parameters
+        ----------
+        items : list[Any], optional
+            List of items of any type.
+        """
+        super().__init__(*args, **kwargs)
+        self.items = items or []
+
+    def data(self, index, role) -> Any:
+        if role == Qt.ItemDataRole.DisplayRole:
+            return self.items[index.row()]
+
+    def rowCount(self, index) -> int:
+        return len(self.items)
+
+
+# endregion
+
+
+# region Open CSV wizard
+
+
+class OpenCsvWizard(QWizard):
+    """Wizard dialog used for getting the dialect and settings of a csv file.
+
+    Attributes
+    ----------
+    file_name : str
+        Name of CSV file.
+    dialect : csv.Dialect
+        Dialect of CSV.
+    col_types_by_user : dict[str, TypeComboBox]
+        Key : Name of column in CSV file.
+        Value : Combobox object in UI.
+    """
+
+    def __init__(self, file_name: str, parent: QWidget = None) -> None:
+        """Initialize OpenCsvWizard class and create button layout.
+
+        Parameters
+        ----------
+        file_name : str
+            Name of CSV file.
+        parent : QWidget, optional
+            Parent widget, by default None
+        """
+        super().__init__(parent)
+
+        self.setWindowTitle("Load data from CSV")
+
+        # pages can use and update this variables
+        self.file_name: str = file_name
+        self.dialect: csv.Dialect = dsl.detect_dialect(file_name)  # TODO exceptions kdyz bude chybny vstup
+        self.col_types_by_user: dict[str, TypeComboBox]
+
+        self.addPage(PageSetDelimiter(parent=self))
+        self.addPage(PageSetDataTypes(parent=self))
+
+        # buttons layout
+        buttons_layout = []
+        buttons_layout.append(QWizard.WizardButton.CancelButton)
+        buttons_layout.append(QWizard.WizardButton.NextButton)
+        buttons_layout.append(QWizard.WizardButton.FinishButton)
+        self.setButtonLayout(buttons_layout)
+
+    def get_csv_settings(self) -> tuple[csv.Dialect, dict[str, str]]:
+        """
+
+        Returns
+        -------
+        dialect : csv.Dialect
+            Dialect of CSV.
+        col_types : dict[str, str]
+            Key : Name of column in CSV file.
+            Value : Data type of column. Selected by user.
+
+        """
+        col_types: dict[str, str] = {key: value.currentText() for key, value in self.col_types_by_user.items()}
+        return self.dialect, col_types
+
+
+class PageSetDelimiter(QWizardPage):
+    """Page used to set delimiter of csv file."""
+
+    def __init__(self, parent: QWidget = None) -> None:
+        super().__init__(parent)
+
+        self.setSubTitle("Set CSV delimiter")
+
+        layout = QVBoxLayout()
+
+        form_layout = QFormLayout()
+
+        # Delimiter #
+        self.delimiter_line_edit = QLineEdit()
+        self.delimiter_line_edit.setMaxLength(1)
+        self.delimiter_line_edit.textEdited.connect(self.delimiter_line_edit_changed)
+        form_layout.addRow(QLabel("Delimiter:"), self.delimiter_line_edit)
+
+        """ TODO uncomment
+        # Quote char #
+        self.quote_char_line_edit = QLineEdit()
+        self.quote_char_line_edit.setMaxLength(1)
+        self.quote_char_line_edit.textEdited.connect(self.quote_char_line_edit_changed)
+        form_layout.addRow(QLabel("Quote character:"), self.quote_char_line_edit)
+
+        # Escape char #
+        self.escape_char_line_edit = QLineEdit()
+        self.escape_char_line_edit.setMaxLength(1)
+        self.escape_char_line_edit.textEdited.connect(self.escape_char_line_edit_changed)
+        form_layout.addRow(QLabel("Escape character:"), self.escape_char_line_edit)
+
+        # Doublequote #
+        self.doublequote_check_box = QCheckBox()
+        self.doublequote_check_box.toggled.connect(self.doublequote_check_box_changed)
+        form_layout.addRow(QLabel("Double quote:"), self.doublequote_check_box)
+
+        # TODO engine selection c/python
+        """
+
+        layout.addLayout(form_layout)
+
+        # Columns preview #
+        layout.addWidget(QLabel("Columns:"))
+        self.columns_view = QListView()
+        self.columns_model = ListModel()
+        self.columns_view.setModel(self.columns_model)
+        layout.addWidget(self.columns_view)
+
+        # Warning #
+        self.warning_label = QLabel()
+        self.warning_label.setStyleSheet("QLabel { color: red }")
+        layout.addWidget(self.warning_label)
+
+        # self.dialect.strict = True # TODO enable?
+        self.setLayout(layout)
+
+    def initializePage(self) -> None:
+        self.delimiter_line_edit.setText(self.wizard().dialect.delimiter)
+        # self.doublequote_check_box.setChecked(self.dialect.doublequote) # TODO delete
+        # self.escape_char_line_edit.setText(self.dialect.escapechar)
+        # self.quote_char_line_edit.setText(self.dialect.quotechar)
+        self.update_column_preview()
+
+    @pyqtSlot()
+    def delimiter_line_edit_changed(self) -> None:
+        self.wizard().dialect.delimiter = self.delimiter_line_edit.text() or None
+        self.update_column_preview()
+
+    """ TODO uncomment
+    def quote_char_line_edit_changed(self):
+        self.dialect.quotechar = self.quote_char_line_edit.text() or None
+        self.update_column_preview()
+
+    def escape_char_line_edit_changed(self):
+        self.dialect.escapechar = self.escape_char_line_edit.text() or None
+        self.update_column_preview()
+
+    def doublequote_check_box_changed(self):
+        self.dialect.doublequote = self.doublequote_check_box.isChecked()
+        self.update_column_preview()
+    """
+
+    def update_column_preview(self) -> None:
+        """Update preview of columns based on delimiter change."""
+        try:
+            self.columns_model.items = list(dsl.detect_columns(self.wizard().file_name, self.wizard().dialect).keys())
+            self.warning_label.clear()
+            self.completeChanged.emit()
+        except (pd.errors.ParserError, TypeError):
+            self.columns_model.items = []
+            self.warning_label.setText("Could not parse csv columns.")
+            self.completeChanged.emit()
+
+        self.columns_model.layoutChanged.emit()
+
+    def isComplete(self) -> bool:
+        """Validates delimiter validity.
+
+        Returns
+        -------
+        bool
+            Columns were parsed correctly.
+        """
+        return bool(self.delimiter_line_edit.text()) and bool(self.columns_model.items)
+
+
+class PageSetDataTypes(QWizardPage):
+    """_summary_
+
+    Attributes
+    ----------
+    goups : bidict[str, QButtonGroup]
+        Key : Group name.
+        Value : Assigned group.
+    file_col_names : FileColumnNames
+        Real names of predefined columns.
+    csv_cols : dict[str, dtype]
+        Key : CSV column name.
+        Value : Automatically detected CSV column data type.
+    cols_ids : dict[int, str]
+        Key : ID of column in UI.
+        Value : Column name in CSV.
+    """
+
+    def __init__(self, parent: QWidget = None) -> None:
+        super().__init__(parent)
+
+        self.layout = QGridLayout(self)
+        self.setLayout(self.layout)
+
+        # TODO delete?
+        # self.warning_label = QLabel()
+        # self.warning_label.setStyleSheet("QLabel { color: red }")
+        # self.layout.addWidget(self.warning_label)
+
+        self.file_col_names = FileColumnNames()
+        self.groups = bidict(
+            {
+                "timestamp": QButtonGroup(self),
+                "rel_time": QButtonGroup(self),
+                "src_ip": QButtonGroup(self),
+                "src_port": QButtonGroup(self),
+                "dst_ip": QButtonGroup(self),
+                "dst_port": QButtonGroup(self),
+            }
+        )
+
+        for group in self.groups.values():
+            group.buttonClicked.connect(self.radio_button_changed)
+
+    @pyqtSlot()
+    def radio_button_changed(self, button: QRadioButton) -> None:
+        """Change the real column name of given group in self.file_col_names.
+
+        Parameters
+        ----------
+        button : QRadioButton
+            Triggered button.
+        """
+        csv_col_name = self.cols_ids[button.group().id(button)]
+        attribute_name = self.groups.inv[button.group()]
+
+        self.file_col_names.__dict__[attribute_name] = csv_col_name
+
+    def initializePage(self) -> None:
+        # grid header
+        self.layout.addWidget(QLabel("Name"), 0, 0, Qt.AlignmentFlag.AlignCenter)
+        self.layout.addWidget(QLabel("Data type"), 0, 1, Qt.AlignmentFlag.AlignCenter)
+
+        self.layout.addWidget(QLabel("Time stamp"), 0, 2, Qt.AlignmentFlag.AlignCenter)
+        b = QPushButton("Reset")
+        b.clicked.connect(lambda: self.deselect_group(self.groups["timestamp"]))
+        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["timestamp"]))
+        self.layout.addWidget(b, 1, 2, Qt.AlignmentFlag.AlignCenter)
+
+        self.layout.addWidget(QLabel("Rel time"), 0, 3, Qt.AlignmentFlag.AlignCenter)
+        b = QPushButton("Reset")
+        b.clicked.connect(lambda: self.deselect_group(self.groups["rel_time"]))
+        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["rel_time"]))
+        self.layout.addWidget(b, 1, 3, Qt.AlignmentFlag.AlignCenter)
+
+        self.layout.addWidget(QLabel("SRC IP"), 0, 4, Qt.AlignmentFlag.AlignCenter)
+        b = QPushButton("Reset")
+        b.clicked.connect(lambda: self.deselect_group(self.groups["src_ip"]))
+        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["src_ip"]))
+        self.layout.addWidget(b, 1, 4, Qt.AlignmentFlag.AlignCenter)
+
+        self.layout.addWidget(QLabel("SRC Port"), 0, 5, Qt.AlignmentFlag.AlignCenter)
+        b = QPushButton("Reset")
+        b.clicked.connect(lambda: self.deselect_group(self.groups["src_port"]))
+        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["src_port"]))
+        self.layout.addWidget(b, 1, 5, Qt.AlignmentFlag.AlignCenter)
+
+        self.layout.addWidget(QLabel("DST IP"), 0, 6, Qt.AlignmentFlag.AlignCenter)
+        b = QPushButton("Reset")
+        b.clicked.connect(lambda: self.deselect_group(self.groups["dst_ip"]))
+        b.clicked.connect(lambda: self.deselectclear_file_col_names_group(self.groups["dst_ip"]))
+        self.layout.addWidget(b, 1, 6, Qt.AlignmentFlag.AlignCenter)
+
+        self.layout.addWidget(QLabel("DST Port"), 0, 7, Qt.AlignmentFlag.AlignCenter)
+        b = QPushButton("Reset")
+        b.clicked.connect(lambda: self.deselect_group(self.groups["dst_port"]))
+        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["dst_port"]))
+        self.layout.addWidget(b, 1, 7, Qt.AlignmentFlag.AlignCenter)
+
+        # grid rest
+        self.csv_cols = dsl.detect_columns(self.wizard().file_name, self.wizard().dialect)
+        self.cols_ids = {}
+        self.wizard().col_types_by_user = {}
+        for i, (col_name, col_type) in enumerate(self.csv_cols.items(), 2):
+            self.layout.addWidget(QLabel(col_name), i, 0)
+
+            type_combo_box = TypeComboBox(col_type)
+            self.layout.addWidget(type_combo_box, i, 1)
+
+            self.wizard().col_types_by_user[col_name] = type_combo_box
+
+            # for radio buttons
+            self.cols_ids[i] = col_name
+
+            for j, group in enumerate(self.groups.values()):
+                b = QRadioButton()
+                group.addButton(b, i)
+                self.layout.addWidget(b, i, j + 2, Qt.AlignmentFlag.AlignCenter)  # magic offset for columns
+
+        self.layout.update()
+
+    @pyqtSlot()
+    def deselect_group(self, group: QButtonGroup) -> None:
+        """Deselect all buttons in button group.
+
+        Parameters
+        ----------
+        group : QButtonGroup
+            Button group.
+        """
+        group.setExclusive(False)
+        for button in group.buttons():
+            if button.isChecked():
+                button.setChecked(False)
+        group.setExclusive(True)
+
+    @pyqtSlot()
+    def clear_file_col_names(self, group: QButtonGroup) -> None:
+        """Update the given group in self.file_col_names to None.
+
+        Parameters
+        ----------
+        group : QButtonGroup
+            Button group.
+        """
+        attribute_name = self.groups.inv[group]
+        self.file_col_names.__dict__[attribute_name] = None
+
+    # def isComplete(self) -> bool:
+    # return super().isComplete()
+
+
+class TypeComboBox(QComboBox):
+    """ComboBox used for selecting data type of column."""
+
+    def __init__(self, type, parent: QWidget = None) -> None:
+        super().__init__(parent)
+        types = ["object", "int", "float", "bool", "datetime", "timedelta", "category"]  # TODO review
+        self.insertItems(0, types)
+        self.setCurrentIndex(types.index(type))
+
+
+# endregion
+
+
+# region Custom Qt components
+
+
 class InfoLabel(QLabel):
     """A label showing formatted information."""
 
@@ -105,6 +498,12 @@ class InfoLabel(QLabel):
             self.setText(f"{self._property}: {new_value}")
 
 
+# endregion
+
+
+# region Main
+
+
 class MainWindow(QMainWindow):
     """Main application window.
 
@@ -125,6 +524,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("ICS Analyzer")
         self.setMinimumSize(800, 500)
 
+        self.df: pd.DataFrame
         self.actions = self.create_actions()
 
         self.init_toolbar()
@@ -144,9 +544,6 @@ class MainWindow(QMainWindow):
         tabs.addTab(primary_widget, "Primary view")
         tabs.addTab(secondary_widget, "Secondary view")
         self.setCentralWidget(tabs)
-
-        dialog = OpenCsv()  # TODO delete
-        dialog.exec()
 
     def create_primary_layout(self) -> QVBoxLayout:
         # TODO add vars to doc
@@ -218,12 +615,12 @@ class MainWindow(QMainWindow):
         actions = dict()
 
         # LOAD CSV #
-        actions['Load CSV'] = QAction(icon=QIcon('img/file.png'), text='Load CSV', parent=self)
+        actions["Load CSV"] = QAction(icon=QIcon("img/file.png"), text="Load CSV", parent=self)
         # https://www.iconfinder.com/icons/290138/document_extension_file_format_paper_icon
         actions["Load CSV"].triggered.connect(self.load_csv)
 
         # EXIT #
-        actions["Exit"] = QAction(icon=QIcon('img/exit.png'), text='Exit', parent=self)
+        actions["Exit"] = QAction(icon=QIcon("img/exit.png"), text="Exit", parent=self)
         # https://www.iconfinder.com/icons/352328/app_exit_to_icon
         actions["Exit"].triggered.connect(QApplication.instance().quit)  # TODO je to spravne?
 
@@ -247,11 +644,22 @@ class MainWindow(QMainWindow):
     def load_csv(self) -> None:
         # TODO zde se bude otvirat nove okno a bude tu detekce sloupcu
 
-        file_path, _ = QFileDialog.getOpenFileName(parent=self, caption='Open file', filter='CSV files (*.csv *.txt)')
+        file_path, _ = QFileDialog.getOpenFileName(parent=self, caption="Open file", filter="CSV files (*.csv *.txt)")
 
         if file_path:
-            dialog = OpenCsv()
-            dialog.exec()
+            dialog = OpenCsvWizard(file_path)
+            if dialog.exec():
+                # TODO exception
+                dialect, dtype = dialog.get_csv_settings()
+                print(dtype)
+                self.df = dsl.load_data(file_path, dtype, None, dialect)
+                self.file_name_label.setText(os.path.basename(file_path))
+                self.df_model = PandasModel(self.df)
+                self.df_table_view.setModel(self.df_model)
+                self.update_stats()
+
+                print(self.df.info())
+
             # try:
             #     dialog = OpenCsv()
             #     dialog.exec()
@@ -260,8 +668,6 @@ class MainWindow(QMainWindow):
             #         "TimeStamp", "Relative Time", "srcIP", "dstIP", "srcPort", "dstPort"))
             #     model = PandasModel(self.df)
             #     self.df_table_view.setModel(model)
-            #     self.file_name_label.setText(os.path.basename(file_path))
-            #     self.update_stats()
             # except Exception:  # TODO odstranit tuhle nehezkou vec
             #     error_dialog = QErrorMessage()
             #     error_dialog.showMessage('An error occurred while loading data')
@@ -273,244 +679,16 @@ class MainWindow(QMainWindow):
         self.column_count.set_value(len(self.df.columns))
 
 
-class OpenCsv(QDialog):
-    def __init__(self):
-        super().__init__()
-
-        self.setWindowTitle("Load data from CSV")
-
-        stacked_layout = QStackedLayout()
-
-        # PAGE 1 - set delimiter #
-
-        self.page1 = QWidget()
-        layout1 = QVBoxLayout()
-        layout1.addWidget(QLabel("ahoj"))
-        layout1.addWidget(QLabel("ahoj"))
-        self.page1.setLayout(layout1)
-
-        # delimiter = dsl.detect_delimiter()
-
-        # PAGE 2 - set column data types #
-
-        self.page2 = QWidget()
-        layout2 = QVBoxLayout()
-        layout2.addWidget(QLabel("ahoj"))
-        layout2.addWidget(QLabel("ahoj"))
-        layout2.addWidget(QLabel("ahoj"))
-        self.page2.setLayout(layout2)
-
-        # Add pages to stacked widget #
-        stacked_layout.addWidget(self.page1)
-        stacked_layout.addWidget(self.page2)
-
-        self.setLayout(stacked_layout)
-
-        # QBtn = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-
-        # self.buttonBox = QDialogButtonBox(QBtn)
-        # self.buttonBox.accepted.connect(self.accept)
-        # self.buttonBox.rejected.connect(self.reject)
-
-        # self.layout = QVBoxLayout()
-
-        # dsl.
-
-        # message = QLabel("Something happened, is that OK?")
-        # self.layout.addWidget(message)
-        # self.layout.addWidget(self.buttonBox)
-        # self.setLayout(self.layout)
-
-
-class OpenCsvWizard(QWizard):
-
-    def __init__(self, file_name: str, parent: QWidget = None):
-        super().__init__(parent)
-
-        self.setWindowTitle("Load data from CSV")
-        self.dialect = dsl.detect_dialect(file_name)
-        self.addPage(Page1(file_name=file_name, dialect=self.dialect, parent=self))
-        self.addPage(Page2(file_name=file_name, dialect=self.dialect, parent=self))
-
-
-class Page1(QWizardPage):
-
-    def __init__(self, file_name: str, dialect: csv.Dialect, parent: QWidget = None):
-        super().__init__(parent)
-        self.file_name = file_name
-        self.dialect = dialect
-
-        self.setSubTitle("Set CSV dialect")
-
-        layout = QVBoxLayout()
-
-        form_layout = QFormLayout()
-
-        # Delimiter #
-        self.delimiter_line_edit = QLineEdit()
-        self.delimiter_line_edit.setMaxLength(1)
-        self.delimiter_line_edit.textEdited.connect(self.delimiter_line_edit_changed)
-        form_layout.addRow(QLabel("Delimiter:"), self.delimiter_line_edit)
-
-        """ TODO uncomment
-        # Quote char #
-        self.quote_char_line_edit = QLineEdit()
-        self.quote_char_line_edit.setMaxLength(1)
-        self.quote_char_line_edit.textEdited.connect(self.quote_char_line_edit_changed)
-        form_layout.addRow(QLabel("Quote character:"), self.quote_char_line_edit)
-
-        # Escape char #
-        self.escape_char_line_edit = QLineEdit()
-        self.escape_char_line_edit.setMaxLength(1)
-        self.escape_char_line_edit.textEdited.connect(self.escape_char_line_edit_changed)
-        form_layout.addRow(QLabel("Escape character:"), self.escape_char_line_edit)
-
-        # Doublequote #
-        self.doublequote_check_box = QCheckBox()
-        self.doublequote_check_box.toggled.connect(self.doublequote_check_box_changed)
-        form_layout.addRow(QLabel("Double quote:"), self.doublequote_check_box)
-
-        # TODO engine selection c/python
-        """
-
-        layout.addLayout(form_layout)
-
-        layout.addWidget(QLabel("Columns:"))
-
-        self.columns_view = QListView()
-        self.columns_model = ListModel()
-        self.columns_view.setModel(self.columns_model)
-
-        layout.addWidget(self.columns_view)
-
-        # Warning #
-        self.warning_label = QLabel()
-        self.warning_label.setStyleSheet("QLabel { color: red }")
-        layout.addWidget(self.warning_label)
-
-        self.setLayout(layout)
-
-        # self.dialect.strict = True # TODO enable?
-
-    def initializePage(self):
-        self.delimiter_line_edit.setText(self.dialect.delimiter)
-        """ TODO uncomment
-        self.doublequote_check_box.setChecked(self.dialect.doublequote)
-        self.escape_char_line_edit.setText(self.dialect.escapechar)
-        self.quote_char_line_edit.setText(self.dialect.quotechar)
-        """
-        self.update_column_preview()
-
-    def delimiter_line_edit_changed(self):
-        self.dialect.delimiter = self.delimiter_line_edit.text() or None
-        self.update_column_preview()
-
-    """ TODO uncomment
-    def quote_char_line_edit_changed(self):
-        self.dialect.quotechar = self.quote_char_line_edit.text() or None
-        self.update_column_preview()
-
-    def escape_char_line_edit_changed(self):
-        self.dialect.escapechar = self.escape_char_line_edit.text() or None
-        self.update_column_preview()
-
-    def doublequote_check_box_changed(self):
-        self.dialect.doublequote = self.doublequote_check_box.isChecked()
-        self.update_column_preview()
-    """
-
-    def update_column_preview(self):
-        try:
-            self.columns_model.items = list(dsl.detect_columns(self.file_name, self.dialect).keys())
-            self.warning_label.clear()
-            self.completeChanged.emit()
-        except (pd.errors.ParserError, TypeError):
-            self.columns_model.items = []
-            self.warning_label.setText("Could not parse csv columns with given dialect.")
-            self.completeChanged.emit()
-
-        self.columns_model.layoutChanged.emit()
-
-    def isComplete(self) -> bool:
-        return bool(self.delimiter_line_edit.text()) and bool(self.columns_model.items)
-
-
-class ListModel(QAbstractListModel):
-    def __init__(self, *args, items=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.items = items or []
-
-    def data(self, index, role):
-        if role == Qt.ItemDataRole.DisplayRole:
-            return self.items[index.row()]
-
-    def rowCount(self, index):
-        return len(self.items)
-
-
-class Page2(QWizardPage):
-    def __init__(self, file_name: str, dialect: csv.Dialect, parent: QWidget = None):
-        super().__init__(parent)
-        self.file_name = file_name
-        self.dialect = dialect
-        self.layout = QVBoxLayout()
-
-        # self.warning_label = QLabel()
-        # self.warning_label.setStyleSheet("QLabel { color: red }")
-        # self.layout.addWidget(self.warning_label)
-
-        self.setLayout(self.layout)
-
-    def initializePage(self) -> None:
-        g1 = QButtonGroup(self)
-        g2 = QButtonGroup(self)
-        for col_name, col_type in dsl.detect_columns(self.file_name, self.dialect).items():
-            row = QHBoxLayout()
-            row.addWidget(QLabel(col_name))
-
-            # w = TypeComboBox(col_type)
-            # w.currentIndexChanged.connect(self.type_changed)
-            row.addWidget(TypeComboBox(col_type))
-
-            row.addWidget(QLabel(str(col_type)))
-
-            r1 = QRadioButton()
-            g1.addButton(r1)
-            row.addWidget(r1)
-
-            r2 = QRadioButton()
-            g2.addButton(r2)
-            row.addWidget(r2)
-
-            self.layout.addLayout(row)
-
-    def cleanupPage(self) -> None:
-        self.layout = QVBoxLayout()
-
-    def type_changed(self):
-        try:
-            dsl.load_data(self.file_name, self.dialect)
-
-            self.warning_label.clear()
-        except:
-            self.warning_label.setText("Invalid based on first 100 rows")
-
-
-class TypeComboBox(QComboBox):
-    def __init__(self, type, parent: QWidget = None):
-        super().__init__(parent)
-        types = ['object', 'int', 'float', 'bool', 'datetime', 'timedelta', 'category']
-        self.insertItems(0, types)  # TODO and so on
-        self.setCurrentIndex(types.index(type))
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
 
-    # window = MainWindow()
-    # window.show()
+    window = MainWindow()
+    window.show()
 
-    wizard = OpenCsvWizard("data/mega104-14-12-18-ioa.csv")
-    wizard.show()
+    # wizard = OpenCsvWizard("data/mega104-14-12-18-ioa.csv")
+    # wizard.show()
 
     app.exec()
+
+
+# endregion

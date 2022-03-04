@@ -5,27 +5,35 @@ import pandas as pd
 from .utils.dataobjects import FileColumnNames
 
 
-def load_data(file_name: str, col_names: FileColumnNames, dialect: csv.Dialect, row_limit: int = 10000) -> pd.DataFrame:
+def load_data(file_name: str, dtype: dict[str, str], col_names: FileColumnNames, dialect: csv.Dialect) -> pd.DataFrame:
     # todo df must have 'srcIP', 'srcPort', 'dstIP', 'dstPort', 'TimeStamp'
     # todo TimeStamp ve fromatu format="%H:%M:%S.%f"
     # todo check if file exists
+    print(dtype)
+    df = pd.read_csv(
+        file_name,
+        dialect=dialect,
+        dtype=dtype,
+        # TODO dynamically
+        #  dtype={'asduType': 'category', 'numix': 'category',
+        #         'cot': 'category', 'uType': 'category', 'oa': 'category'},
+        #  parse_dates=['TimeStamp']
+    )
 
-    if not delimiter:
-        delimiter = detect_delimiter(file_name)
-
-    df = pd.read_csv(file_name,
-                     dialect=dialect,
-                     # TODO dynamically
-                     dtype={'asduType': 'category', 'numix': 'category',
-                            'cot': 'category', 'uType': 'category', 'oa': 'category'},
-                     #  parse_dates=['TimeStamp']
-                     )
-
-    df = df.rename(columns={col_names.timestamp: "timeStamp", col_names.rel_time: "relTime", col_names.src_ip: "srcIp",
-                   col_names.dst_ip: "dstIp", col_names.src_port: "srcPort", col_names.dst_port: "dstPort"})
+    if col_names:
+        df = df.rename(
+            columns={
+                col_names.timestamp: "timeStamp",
+                col_names.rel_time: "relTime",
+                col_names.src_ip: "srcIp",
+                col_names.dst_ip: "dstIp",
+                col_names.src_port: "srcPort",
+                col_names.dst_port: "dstPort",
+            }
+        )
 
     # TODO exceptions
-    df['timeStamp'] = pd.to_datetime(df['timeStamp'])
+    # df["timeStamp"] = pd.to_datetime(df["timeStamp"])
 
     return df
 
@@ -49,7 +57,7 @@ def detect_delimiter(file_name: str) -> str:  # TODO delete
         Detected delimiter.
     """
     # TODO exceptions
-    with open(file_name, 'r') as file:
+    with open(file_name, "r") as file:
         header = file.readline()
 
     return csv.Sniffer().sniff(header).delimiter
@@ -74,7 +82,7 @@ def detect_dialect(file_name) -> csv.Dialect:
         Detected dialect.
     """
     # TODO exceptions
-    with open(file_name, 'r') as file:
+    with open(file_name, "r") as file:
         header = file.readline()
 
     return csv.Sniffer().sniff(header)
@@ -129,7 +137,7 @@ def detect_columns(file_name: str, dialect: csv.Dialect, row_limit: int = 10000)
         Dictionary of detected columns and data types.
     """
 
-    df = pd.read_csv(file_name, dialect=dialect, nrows=row_limit, engine='python')
+    df = pd.read_csv(file_name, dialect=dialect, nrows=row_limit, engine="python")
 
     return df.dtypes.to_dict()
 

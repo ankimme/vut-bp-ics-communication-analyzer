@@ -16,6 +16,7 @@ class CommunicationPair:
     dst_port : int
         Destination port.
     """
+
     src_ip: str
     dst_ip: str
 
@@ -43,9 +44,12 @@ class FileColumnNames:
         Real name of dstPort column.
     """
 
-    timestamp: str
-    rel_time: str
-    src_ip: str
-    dst_ip: str
-    src_port: str
-    dst_port: str
+    timestamp: str = None
+    rel_time: str = None
+    src_ip: str = None
+    dst_ip: str = None
+    src_port: str = None
+    dst_port: str = None
+
+    def __str__(self) -> str:
+        return f"timestamp: {self.timestamp}\nrel_time: {self.rel_time}\nsrc_ip: {self.src_ip}\ndst_ip: {self.dst_ip}\nsrc_port: {self.src_port}\ndst_port: {self.dst_port}"
