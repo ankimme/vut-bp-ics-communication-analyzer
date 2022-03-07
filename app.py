@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+from audioop import reverse
 import csv
 import os
 import sys
+import traceback
 from typing import Any
 from bidict import bidict
 import numpy as np
@@ -37,6 +39,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QRadioButton,
     QButtonGroup,
+    QAbstractButton,
 )
 from PyQt6.QtGui import QIcon, QAction, QPalette, QColor
 
@@ -318,13 +321,15 @@ class PageSetDataTypes(QWizardPage):
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
 
-        self.layout = QGridLayout(self)
-        self.setLayout(self.layout)
+        self.layout = QVBoxLayout(self)
+        self.grid_layout = QGridLayout(self)
 
-        # TODO delete?
-        # self.warning_label = QLabel()
-        # self.warning_label.setStyleSheet("QLabel { color: red }")
-        # self.layout.addWidget(self.warning_label)
+        self.warning_label = QLabel()
+        self.warning_label.setStyleSheet("QLabel { color: red }")
+
+        self.layout.addLayout(self.grid_layout)
+        self.layout.addWidget(self.warning_label)
+        self.setLayout(self.layout)
 
         self.file_col_names = FileColumnNames()
         self.groups = bidict(
@@ -339,9 +344,115 @@ class PageSetDataTypes(QWizardPage):
         )
 
         for group in self.groups.values():
-            group.buttonClicked.connect(self.radio_button_changed)
+            # group.buttonClicked.connect(self.radio_button_changed) todo delete
+            group.buttonToggled.connect(self.radio_button_changed)
+
+    def initializePage(self) -> None:
+        # grid header
+        self.grid_layout.addWidget(QLabel("Name"), 0, 0, Qt.AlignmentFlag.AlignCenter)
+        self.grid_layout.addWidget(QLabel("Data type"), 0, 1, Qt.AlignmentFlag.AlignCenter)
+
+        self.grid_layout.addWidget(QLabel("Time stamp"), 0, 2, Qt.AlignmentFlag.AlignCenter)
+        b = QPushButton("Reset")
+        b.clicked.connect(lambda: self.deselect_group(self.groups["timestamp"]))
+        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["timestamp"]))
+        self.grid_layout.addWidget(b, 1, 2, Qt.AlignmentFlag.AlignCenter)
+
+        self.grid_layout.addWidget(QLabel("Rel time"), 0, 3, Qt.AlignmentFlag.AlignCenter)
+        b = QPushButton("Reset")
+        b.clicked.connect(lambda: self.deselect_group(self.groups["rel_time"]))
+        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["rel_time"]))
+        self.grid_layout.addWidget(b, 1, 3, Qt.AlignmentFlag.AlignCenter)
+
+        self.grid_layout.addWidget(QLabel("SRC IP"), 0, 4, Qt.AlignmentFlag.AlignCenter)
+        b = QPushButton("Reset")
+        b.clicked.connect(lambda: self.deselect_group(self.groups["src_ip"]))
+        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["src_ip"]))
+        self.grid_layout.addWidget(b, 1, 4, Qt.AlignmentFlag.AlignCenter)
+
+        self.grid_layout.addWidget(QLabel("SRC Port"), 0, 5, Qt.AlignmentFlag.AlignCenter)
+        b = QPushButton("Reset")
+        b.clicked.connect(lambda: self.deselect_group(self.groups["src_port"]))
+        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["src_port"]))
+        self.grid_layout.addWidget(b, 1, 5, Qt.AlignmentFlag.AlignCenter)
+
+        self.grid_layout.addWidget(QLabel("DST IP"), 0, 6, Qt.AlignmentFlag.AlignCenter)
+        b = QPushButton("Reset")
+        b.clicked.connect(lambda: self.deselect_group(self.groups["dst_ip"]))
+        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["dst_ip"]))
+        self.grid_layout.addWidget(b, 1, 6, Qt.AlignmentFlag.AlignCenter)
+
+        self.grid_layout.addWidget(QLabel("DST Port"), 0, 7, Qt.AlignmentFlag.AlignCenter)
+        b = QPushButton("Reset")
+        b.clicked.connect(lambda: self.deselect_group(self.groups["dst_port"]))
+        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["dst_port"]))
+        self.grid_layout.addWidget(b, 1, 7, Qt.AlignmentFlag.AlignCenter)
+
+        # grid rest
+        self.csv_cols = dsl.detect_columns(self.wizard().file_name, self.wizard().dialect)
+        self.cols_ids = {}
+        self.wizard().col_types_by_user = {}
+        row_offset, col_offset = 2, 2
+        for i, (col_name, col_type) in enumerate(self.csv_cols.items(), 2):
+            self.grid_layout.addWidget(QLabel(col_name), i, 0)
+
+            type_combo_box = TypeComboBox(col_type)
+            type_combo_box.currentTextChanged.connect(self.validate_user_settings)
+            self.grid_layout.addWidget(type_combo_box, i, 1)
+
+            self.wizard().col_types_by_user[col_name] = type_combo_box
+
+            # for radio buttons
+            self.cols_ids[i - 2] = col_name
+
+            for j, group in enumerate(self.groups.values()):
+                b = QRadioButton()
+                group.addButton(b, i - 2)
+                self.grid_layout.addWidget(b, i, j + 2, Qt.AlignmentFlag.AlignCenter)  # magic offset for columns
+
+        print(self.cols_ids)
+        self.autodetect_file_col_names()
+        self.grid_layout.update()
+
+    def autodetect_file_col_names(self):
+        for col_id, name in reversed(self.cols_ids.items()):
+            name = name.lower()
+            group = None
+
+            if "stamp" in name:
+                group = self.groups["timestamp"]
+            elif "rel" in name:
+                group = self.groups["rel_time"]
+            elif "time" in name:
+                group = self.groups["timestamp"]
+            elif any(x in name for x in ["src", "source"]):
+                if any(x in name for x in ["ip", "internet", "address"]):
+                    print("je tam")
+                    group = self.groups["src_ip"]
+                elif "port" in name:
+                    group = self.groups["src_port"]
+            elif any(x in name for x in ["dst", "destination"]):
+                if any(x in name for x in ["ip", "internet", "address"]):
+                    group = self.groups["dst_ip"]
+                elif "port" in name:
+                    group = self.groups["dst_port"]
+
+            if group:
+                group.buttons()[col_id].setChecked(True)
 
     @pyqtSlot()
+    def validate_user_settings(self):
+        try:
+            col_types = {key: value.currentText() for key, value in self.wizard().col_types_by_user.items()}
+
+            dsl.load_data(self.wizard().file_name, col_types, self.file_col_names, self.wizard().dialect, 100)
+
+            self.warning_label.clear()
+        except Exception as e:
+            print(traceback.format_exc())
+            self.warning_label.setText("Could not parse csv. (Based on first 100 rows)")
+
+    @pyqtSlot(QAbstractButton)
     def radio_button_changed(self, button: QRadioButton) -> None:
         """Change the real column name of given group in self.file_col_names.
 
@@ -355,68 +466,7 @@ class PageSetDataTypes(QWizardPage):
 
         self.file_col_names.__dict__[attribute_name] = csv_col_name
 
-    def initializePage(self) -> None:
-        # grid header
-        self.layout.addWidget(QLabel("Name"), 0, 0, Qt.AlignmentFlag.AlignCenter)
-        self.layout.addWidget(QLabel("Data type"), 0, 1, Qt.AlignmentFlag.AlignCenter)
-
-        self.layout.addWidget(QLabel("Time stamp"), 0, 2, Qt.AlignmentFlag.AlignCenter)
-        b = QPushButton("Reset")
-        b.clicked.connect(lambda: self.deselect_group(self.groups["timestamp"]))
-        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["timestamp"]))
-        self.layout.addWidget(b, 1, 2, Qt.AlignmentFlag.AlignCenter)
-
-        self.layout.addWidget(QLabel("Rel time"), 0, 3, Qt.AlignmentFlag.AlignCenter)
-        b = QPushButton("Reset")
-        b.clicked.connect(lambda: self.deselect_group(self.groups["rel_time"]))
-        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["rel_time"]))
-        self.layout.addWidget(b, 1, 3, Qt.AlignmentFlag.AlignCenter)
-
-        self.layout.addWidget(QLabel("SRC IP"), 0, 4, Qt.AlignmentFlag.AlignCenter)
-        b = QPushButton("Reset")
-        b.clicked.connect(lambda: self.deselect_group(self.groups["src_ip"]))
-        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["src_ip"]))
-        self.layout.addWidget(b, 1, 4, Qt.AlignmentFlag.AlignCenter)
-
-        self.layout.addWidget(QLabel("SRC Port"), 0, 5, Qt.AlignmentFlag.AlignCenter)
-        b = QPushButton("Reset")
-        b.clicked.connect(lambda: self.deselect_group(self.groups["src_port"]))
-        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["src_port"]))
-        self.layout.addWidget(b, 1, 5, Qt.AlignmentFlag.AlignCenter)
-
-        self.layout.addWidget(QLabel("DST IP"), 0, 6, Qt.AlignmentFlag.AlignCenter)
-        b = QPushButton("Reset")
-        b.clicked.connect(lambda: self.deselect_group(self.groups["dst_ip"]))
-        b.clicked.connect(lambda: self.deselectclear_file_col_names_group(self.groups["dst_ip"]))
-        self.layout.addWidget(b, 1, 6, Qt.AlignmentFlag.AlignCenter)
-
-        self.layout.addWidget(QLabel("DST Port"), 0, 7, Qt.AlignmentFlag.AlignCenter)
-        b = QPushButton("Reset")
-        b.clicked.connect(lambda: self.deselect_group(self.groups["dst_port"]))
-        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["dst_port"]))
-        self.layout.addWidget(b, 1, 7, Qt.AlignmentFlag.AlignCenter)
-
-        # grid rest
-        self.csv_cols = dsl.detect_columns(self.wizard().file_name, self.wizard().dialect)
-        self.cols_ids = {}
-        self.wizard().col_types_by_user = {}
-        for i, (col_name, col_type) in enumerate(self.csv_cols.items(), 2):
-            self.layout.addWidget(QLabel(col_name), i, 0)
-
-            type_combo_box = TypeComboBox(col_type)
-            self.layout.addWidget(type_combo_box, i, 1)
-
-            self.wizard().col_types_by_user[col_name] = type_combo_box
-
-            # for radio buttons
-            self.cols_ids[i] = col_name
-
-            for j, group in enumerate(self.groups.values()):
-                b = QRadioButton()
-                group.addButton(b, i)
-                self.layout.addWidget(b, i, j + 2, Qt.AlignmentFlag.AlignCenter)  # magic offset for columns
-
-        self.layout.update()
+        print(self.file_col_names)  # todo delete
 
     @pyqtSlot()
     def deselect_group(self, group: QButtonGroup) -> None:
@@ -445,8 +495,9 @@ class PageSetDataTypes(QWizardPage):
         attribute_name = self.groups.inv[group]
         self.file_col_names.__dict__[attribute_name] = None
 
-    # def isComplete(self) -> bool:
-    # return super().isComplete()
+    def isComplete(self) -> bool:
+
+        return super().isComplete()
 
 
 class TypeComboBox(QComboBox):
@@ -651,7 +702,7 @@ class MainWindow(QMainWindow):
             if dialog.exec():
                 # TODO exception
                 dialect, dtype = dialog.get_csv_settings()
-                print(dtype)
+                # print(dtype)
                 self.df = dsl.load_data(file_path, dtype, None, dialect)
                 self.file_name_label.setText(os.path.basename(file_path))
                 self.df_model = PandasModel(self.df)

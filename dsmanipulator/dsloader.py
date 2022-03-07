@@ -5,32 +5,35 @@ import pandas as pd
 from .utils.dataobjects import FileColumnNames
 
 
-def load_data(file_name: str, dtype: dict[str, str], col_names: FileColumnNames, dialect: csv.Dialect) -> pd.DataFrame:
+def load_data(file_name: str, dtype: dict[str, str], col_names: FileColumnNames, dialect: csv.Dialect, row_limit: int = None) -> pd.DataFrame:
     # todo df must have 'srcIP', 'srcPort', 'dstIP', 'dstPort', 'TimeStamp'
     # todo TimeStamp ve fromatu format="%H:%M:%S.%f"
     # todo check if file exists
-    print(dtype)
+
+    col_types = {k: v for k, v in dtype.items() if v != "datetime"}
+    date_time_columns = [k for k, v in dtype.items() if v == "datetime"]
+
     df = pd.read_csv(
         file_name,
         dialect=dialect,
-        dtype=dtype,
-        # TODO dynamically
-        #  dtype={'asduType': 'category', 'numix': 'category',
-        #         'cot': 'category', 'uType': 'category', 'oa': 'category'},
-        #  parse_dates=['TimeStamp']
+        dtype=col_types,
+        parse_dates=date_time_columns,
     )
 
-    if col_names:
-        df = df.rename(
-            columns={
-                col_names.timestamp: "timeStamp",
-                col_names.rel_time: "relTime",
-                col_names.src_ip: "srcIp",
-                col_names.dst_ip: "dstIp",
-                col_names.src_port: "srcPort",
-                col_names.dst_port: "dstPort",
-            }
-        )
+    # TODO accept some Nones
+    if any(value is None for value in col_names.__dict__.values()):
+        raise Exception()
+
+    df = df.rename(
+        columns={
+            col_names.timestamp: "timeStamp",
+            col_names.rel_time: "relTime",
+            col_names.src_ip: "srcIp",
+            col_names.dst_ip: "dstIp",
+            col_names.src_port: "srcPort",
+            col_names.dst_port: "dstPort",
+        }
+    )
 
     # TODO exceptions
     # df["timeStamp"] = pd.to_datetime(df["timeStamp"])
