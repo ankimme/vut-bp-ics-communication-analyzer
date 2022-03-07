@@ -5,7 +5,7 @@ import pandas as pd
 from .utils.dataobjects import FileColumnNames
 
 
-def load_data(file_name: str, dtype: dict[str, str], col_names: FileColumnNames, dialect: csv.Dialect, row_limit: int = None) -> pd.DataFrame:
+def load_data(file_name: str, dtype: dict[str, str], dialect: csv.Dialect, row_limit: int = None) -> pd.DataFrame:
     # todo df must have 'srcIP', 'srcPort', 'dstIP', 'dstPort', 'TimeStamp'
     # todo TimeStamp ve fromatu format="%H:%M:%S.%f"
     # todo check if file exists
@@ -20,20 +20,20 @@ def load_data(file_name: str, dtype: dict[str, str], col_names: FileColumnNames,
         parse_dates=date_time_columns,
     )
 
-    # TODO accept some Nones
-    if any(value is None for value in col_names.__dict__.values()):
-        raise Exception()
+    # # TODO accept some Nones
+    # if any(value is None for value in col_names.__dict__.values()):
+    #     raise Exception()
 
-    df = df.rename(
-        columns={
-            col_names.timestamp: "timeStamp",
-            col_names.rel_time: "relTime",
-            col_names.src_ip: "srcIp",
-            col_names.dst_ip: "dstIp",
-            col_names.src_port: "srcPort",
-            col_names.dst_port: "dstPort",
-        }
-    )
+    # df = df.rename(
+    #     columns={
+    #         col_names.timestamp: "timeStamp",
+    #         col_names.rel_time: "relTime",
+    #         col_names.src_ip: "srcIp",
+    #         col_names.dst_ip: "dstIp",
+    #         col_names.src_port: "srcPort",
+    #         col_names.dst_port: "dstPort",
+    #     }
+    # )
 
     # TODO exceptions
     # df["timeStamp"] = pd.to_datetime(df["timeStamp"])

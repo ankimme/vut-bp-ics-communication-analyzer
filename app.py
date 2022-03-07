@@ -158,6 +158,8 @@ class OpenCsvWizard(QWizard):
             Name of CSV file.
         parent : QWidget, optional
             Parent widget, by default None
+        file_col_names : FileColumnNames
+            Real names of predefined columns.
         """
         super().__init__(parent)
 
@@ -167,6 +169,7 @@ class OpenCsvWizard(QWizard):
         self.file_name: str = file_name
         self.dialect: csv.Dialect = dsl.detect_dialect(file_name)  # TODO exceptions kdyz bude chybny vstup
         self.col_types_by_user: dict[str, TypeComboBox]
+        self.file_col_names: FileColumnNames
 
         self.addPage(PageSetDelimiter(parent=self))
         self.addPage(PageSetDataTypes(parent=self))
@@ -188,10 +191,12 @@ class OpenCsvWizard(QWizard):
         col_types : dict[str, str]
             Key : Name of column in CSV file.
             Value : Data type of column. Selected by user.
+        file_col_names : FileColumnNames
+            Real names of predefined columns.
 
         """
         col_types: dict[str, str] = {key: value.currentText() for key, value in self.col_types_by_user.items()}
-        return self.dialect, col_types
+        return self.dialect, col_types, self.file_col_names
 
 
 class PageSetDelimiter(QWizardPage):
@@ -308,8 +313,6 @@ class PageSetDataTypes(QWizardPage):
     goups : bidict[str, QButtonGroup]
         Key : Group name.
         Value : Assigned group.
-    file_col_names : FileColumnNames
-        Real names of predefined columns.
     csv_cols : dict[str, dtype]
         Key : CSV column name.
         Value : Automatically detected CSV column data type.
@@ -331,7 +334,6 @@ class PageSetDataTypes(QWizardPage):
         self.layout.addWidget(self.warning_label)
         self.setLayout(self.layout)
 
-        self.file_col_names = FileColumnNames()
         self.groups = bidict(
             {
                 "timestamp": QButtonGroup(self),
@@ -344,10 +346,13 @@ class PageSetDataTypes(QWizardPage):
         )
 
         for group in self.groups.values():
-            # group.buttonClicked.connect(self.radio_button_changed) todo delete
             group.buttonToggled.connect(self.radio_button_changed)
+            # group.buttonClicked.connect(self.radio_button_changed)
+            # group.buttonClicked.connect(self.completeChanged.emit)
 
     def initializePage(self) -> None:
+        self.wizard().file_col_names = FileColumnNames()
+
         # grid header
         self.grid_layout.addWidget(QLabel("Name"), 0, 0, Qt.AlignmentFlag.AlignCenter)
         self.grid_layout.addWidget(QLabel("Data type"), 0, 1, Qt.AlignmentFlag.AlignCenter)
@@ -397,7 +402,10 @@ class PageSetDataTypes(QWizardPage):
             self.grid_layout.addWidget(QLabel(col_name), i, 0)
 
             type_combo_box = TypeComboBox(col_type)
-            type_combo_box.currentTextChanged.connect(self.validate_user_settings)
+            # type_combo_box.currentTextChanged.connect(self.validate_user_settings)
+
+            type_combo_box.currentTextChanged.connect(self.completeChanged.emit)
+
             self.grid_layout.addWidget(type_combo_box, i, 1)
 
             self.wizard().col_types_by_user[col_name] = type_combo_box
@@ -410,9 +418,9 @@ class PageSetDataTypes(QWizardPage):
                 group.addButton(b, i - 2)
                 self.grid_layout.addWidget(b, i, j + 2, Qt.AlignmentFlag.AlignCenter)  # magic offset for columns
 
-        print(self.cols_ids)
         self.autodetect_file_col_names()
         self.grid_layout.update()
+        self.completeChanged.emit()
 
     def autodetect_file_col_names(self):
         for col_id, name in reversed(self.cols_ids.items()):
@@ -427,7 +435,6 @@ class PageSetDataTypes(QWizardPage):
                 group = self.groups["timestamp"]
             elif any(x in name for x in ["src", "source"]):
                 if any(x in name for x in ["ip", "internet", "address"]):
-                    print("je tam")
                     group = self.groups["src_ip"]
                 elif "port" in name:
                     group = self.groups["src_port"]
@@ -440,37 +447,49 @@ class PageSetDataTypes(QWizardPage):
             if group:
                 group.buttons()[col_id].setChecked(True)
 
-    @pyqtSlot()
-    def validate_user_settings(self):
-        try:
-            col_types = {key: value.currentText() for key, value in self.wizard().col_types_by_user.items()}
+    # def validatePage(self) -> bool:
+    #     try:
+    #         col_types = {key: value.currentText() for key, value in self.wizard().col_types_by_user.items()}
 
-            dsl.load_data(self.wizard().file_name, col_types, self.file_col_names, self.wizard().dialect, 100)
+    #         dsl.load_data(self.wizard().file_name, col_types, self.file_col_names, self.wizard().dialect, 100)
 
-            self.warning_label.clear()
-        except Exception as e:
-            print(traceback.format_exc())
-            self.warning_label.setText("Could not parse csv. (Based on first 100 rows)")
+    #         return True
+    #     except Exception as e:
+    #         return False
+
+    # @pyqtSlot()
+    # def validate_user_settings(self):
+    #     pass
+    # try:
+    #     col_types = {key: value.currentText() for key, value in self.wizard().col_types_by_user.items()}
+
+    #     dsl.load_data(self.wizard().file_name, col_types, self.file_col_names, self.wizard().dialect, 100)
+
+    #     self.warning_label.clear()
+    # except Exception as e:
+    #     print(traceback.format_exc())
+    #     self.warning_label.setText("Could not parse csv. (Based on first 100 rows)")
 
     @pyqtSlot(QAbstractButton)
     def radio_button_changed(self, button: QRadioButton) -> None:
-        """Change the real column name of given group in self.file_col_names.
+        """Change the real column name of given group in file_col_names.
 
         Parameters
         ----------
         button : QRadioButton
             Triggered button.
         """
-        csv_col_name = self.cols_ids[button.group().id(button)]
-        attribute_name = self.groups.inv[button.group()]
+        if button.isChecked():
+            csv_col_name = self.cols_ids[button.group().id(button)]
+            attribute_name = self.groups.inv[button.group()]
 
-        self.file_col_names.__dict__[attribute_name] = csv_col_name
+            self.wizard().file_col_names.__dict__[attribute_name] = csv_col_name
 
-        print(self.file_col_names)  # todo delete
+            self.completeChanged.emit()
 
     @pyqtSlot()
     def deselect_group(self, group: QButtonGroup) -> None:
-        """Deselect all buttons in button group.
+        """Deselect all buttons in button group and update file_col_names.
 
         Parameters
         ----------
@@ -483,9 +502,14 @@ class PageSetDataTypes(QWizardPage):
                 button.setChecked(False)
         group.setExclusive(True)
 
+        attribute_name = self.groups.inv[group]
+        self.wizard().file_col_names.__dict__[attribute_name] = None
+
+        self.completeChanged.emit()
+
     @pyqtSlot()
     def clear_file_col_names(self, group: QButtonGroup) -> None:
-        """Update the given group in self.file_col_names to None.
+        """Update the given group in file_col_names to None.
 
         Parameters
         ----------
@@ -493,11 +517,24 @@ class PageSetDataTypes(QWizardPage):
             Button group.
         """
         attribute_name = self.groups.inv[group]
-        self.file_col_names.__dict__[attribute_name] = None
+        self.wizard().file_col_names.__dict__[attribute_name] = None
 
     def isComplete(self) -> bool:
+        try:
 
-        return super().isComplete()
+            assert all(group.checkedButton() for group in self.groups.values())
+
+            col_types = {key: value.currentText() for key, value in self.wizard().col_types_by_user.items()}
+
+            dsl.load_data(self.wizard().file_name, col_types, self.wizard().dialect, 100)
+
+            self.warning_label.clear()
+
+            return True
+        except Exception as e:
+            self.warning_label.setText("Could not parse csv. (Based on first 100 rows)")
+            print(traceback.format_exc())
+            return False
 
 
 class TypeComboBox(QComboBox):
@@ -701,9 +738,9 @@ class MainWindow(QMainWindow):
             dialog = OpenCsvWizard(file_path)
             if dialog.exec():
                 # TODO exception
-                dialect, dtype = dialog.get_csv_settings()
+                dialect, dtype, x = dialog.get_csv_settings()
                 # print(dtype)
-                self.df = dsl.load_data(file_path, dtype, None, dialect)
+                self.df = dsl.load_data(file_path, dtype, dialect)
                 self.file_name_label.setText(os.path.basename(file_path))
                 self.df_model = PandasModel(self.df)
                 self.df_table_view.setModel(self.df_model)
