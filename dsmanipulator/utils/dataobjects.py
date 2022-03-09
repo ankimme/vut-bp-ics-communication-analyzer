@@ -42,6 +42,8 @@ class FileColumnNames:
         Real name of srcPort column.
     dst_port : str
         Real name of dstPort column.
+    rel_day : str
+        Real name of relative day column.
     """
 
     timestamp: str = None
@@ -50,6 +52,7 @@ class FileColumnNames:
     dst_ip: str = None
     src_port: str = None
     dst_port: str = None
+    rel_day : str = None
 
-    def __str__(self) -> str:
-        return f"timestamp: {self.timestamp}\nrel_time: {self.rel_time}\nsrc_ip: {self.src_ip}\ndst_ip: {self.dst_ip}\nsrc_port: {self.src_port}\ndst_port: {self.dst_port}"
+    # def __str__(self) -> str:
+    #     return f"timestamp: {self.timestamp}\nrel_time: {self.rel_time}\nsrc_ip: {self.src_ip}\ndst_ip: {self.dst_ip}\nsrc_port: {self.src_port}\ndst_port: {self.dst_port}"

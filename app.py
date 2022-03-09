@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from audioop import reverse
 import csv
 import os
 import sys
@@ -10,7 +9,7 @@ from bidict import bidict
 import numpy as np
 import pandas as pd
 
-from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex, QAbstractListModel, pyqtSlot
+from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex, QAbstractListModel, pyqtSlot, QAbstractItemModel
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -52,12 +51,12 @@ from dsmanipulator.utils.dataobjects import FileColumnNames
 
 
 # https://doc.qt.io/qtforpython/examples/example_external__pandas.html
-class PandasModel(QAbstractTableModel):
+class DataFrameModel(QAbstractTableModel):
     """A model to interface a Qt view with pandas dataframe"""
 
     def __init__(self, dataframe: pd.DataFrame, parent=None):
         QAbstractTableModel.__init__(self, parent)
-        self._dataframe = dataframe
+        self._df = dataframe
 
     def rowCount(self, parent=QModelIndex()) -> int:
         """Override method from QAbstractTableModel
@@ -65,7 +64,7 @@ class PandasModel(QAbstractTableModel):
         Return row count of the pandas DataFrame
         """
         if parent == QModelIndex():
-            return len(self._dataframe)
+            return len(self._df)
         else:
             return 0
 
@@ -75,7 +74,7 @@ class PandasModel(QAbstractTableModel):
         Return column count of the pandas DataFrame
         """
         if parent == QModelIndex():
-            return len(self._dataframe.columns)
+            return len(self._df.columns)
         else:
             return 0
 
@@ -88,7 +87,7 @@ class PandasModel(QAbstractTableModel):
             return None
 
         if role == Qt.ItemDataRole.DisplayRole:
-            return str(self._dataframe.iloc[index.row(), index.column()])
+            return str(self._df.iloc[index.row(), index.column()])
 
         return None
 
@@ -99,12 +98,19 @@ class PandasModel(QAbstractTableModel):
         """
         if role == Qt.ItemDataRole.DisplayRole:
             if orientation == Qt.Orientation.Horizontal:
-                return str(self._dataframe.columns[section])
+                return str(self._df.columns[section])
 
             if orientation == Qt.Orientation.Vertical:
-                return str(self._dataframe.index[section])
+                return str(self._df.index[section])
 
         return None
+
+    def sort(self, column: int, order: Qt.SortOrder = ...) -> None:
+        colname = self._df.columns.tolist()[column]
+        self.layoutAboutToBeChanged.emit()
+        self._df.sort_values(colname, ascending=order == Qt.SortOrder.AscendingOrder, inplace=True)
+        self._df.reset_index(inplace=True, drop=True)
+        self.layoutChanged.emit()
 
 
 class ListModel(QAbstractListModel):
@@ -603,8 +609,13 @@ class MainWindow(QMainWindow):
         Toolbar object.
     file_name_label : QLabel
         Label in the top left corner with file name.
+    stat_widgets : dict[str, InfoLabel]
+        Key : Statistic name.
+        Value : Assigned label.
     df : pd.DataFrame
         Main dataframe.
+    df_model : DataFrameModel
+        Model of original data.
     """
 
     def __init__(self):
@@ -613,6 +624,8 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(800, 500)
 
         self.df: pd.DataFrame
+        self.df_model: DataFrameModel
+        self.stat_widgets: dict[str, InfoLabel] = {}
         self.actions = self.create_actions()
 
         self.init_toolbar()
@@ -621,59 +634,72 @@ class MainWindow(QMainWindow):
         # tabs.setTabPosition(QTabWidget.West)
         # tabs.setMovable(True)
 
-        primary_widget = QWidget()
-        primary_layout = self.create_primary_layout()
-        primary_widget.setLayout(primary_layout)
+        # primary_widget = QWidget()
+        # primary_layout = self.create_primary_layout()
+        # primary_widget.setLayout(primary_layout)
+        primary_widget = self.create_original_df_view()
 
         secondary_widget = QWidget()
         secondary_layout = self.create_secondary_layout()
         secondary_widget.setLayout(secondary_layout)
 
-        tabs.addTab(primary_widget, "Primary view")
+        tabs.addTab(primary_widget, "Original Dataframe")
         tabs.addTab(secondary_widget, "Secondary view")
         self.setCentralWidget(tabs)
 
-    def create_primary_layout(self) -> QVBoxLayout:
-        # TODO add vars to doc
-        layout = QVBoxLayout()
+    def create_original_df_view(self) -> QTableView:
+        # # TODO add vars to doc
+        # layout = QVBoxLayout()
 
-        # add file name info on top
-        self.file_name_label = QLabel()
-        layout.addWidget(self.file_name_label)
+        # # add file name info on top
+        # self.file_name_label = QLabel()
+        # layout.addWidget(self.file_name_label)
 
-        # LAYOUT TOP - INFORMATION PANEL #
-        info_panel_layout = QGridLayout()
+        # # LAYOUT TOP - INFORMATION PANEL #
+        # info_panel_layout = QGridLayout()
 
-        self.entries = InfoLabel("Entries")
-        info_panel_layout.addWidget(self.entries, 0, 0)
+        # self.entries = InfoLabel("Entries")
+        # info_panel_layout.addWidget(self.entries, 0, 0)
 
-        self.column_count = InfoLabel("Columns")
-        info_panel_layout.addWidget(self.column_count, 0, 1)
+        # self.column_count = InfoLabel("Columns")
+        # info_panel_layout.addWidget(self.column_count, 0, 1)
 
-        # set maximum stretch for all columns
-        for i in range(info_panel_layout.columnCount()):
-            info_panel_layout.setColumnStretch(i, 1)
+        # # set maximum stretch for all columns
+        # for i in range(info_panel_layout.columnCount()):
+        #     info_panel_layout.setColumnStretch(i, 1)
 
-        info_panel_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addLayout(info_panel_layout)
+        # info_panel_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # layout.addLayout(info_panel_layout)
 
         # LAYOUT BOTTOM - DATAFRAME VIEW #
-        self.df_table_view = QTableView()
-        self.df_table_view.horizontalHeader().setStretchLastSection(True)
-        self.df_table_view.setAlternatingRowColors(True)
-        self.df_table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
+        self.table_view = QTableView()
+        self.table_view.setSortingEnabled(True)
+        self.table_view.horizontalHeader().setStretchLastSection(True)
+        self.table_view.setAlternatingRowColors(True)
+        self.table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
 
-        layout.addWidget(self.df_table_view)
+        # layout.addWidget(self.table_view)
 
-        return layout
+        return self.table_view
 
     def create_secondary_layout(self) -> QVBoxLayout:
         # TODO add vars to doc
         layout = QVBoxLayout()
 
-        layout.addWidget(QLabel("zakladni info"))
-        layout.addWidget(QLabel("filtry"))
-        layout.addWidget(QLabel("menu pro tvorbu grafu"))
+        stat_names = ["File name", "Row count", "Column count", "Time span"]
+
+        for stat in stat_names:
+            w = InfoLabel(stat)
+            self.stat_widgets[stat] = w
+            layout.addWidget(w)
+
+        # BASIC STATS #
+        # grid_layout = QGridLayout()
+        # grid_layout.addWidget(, 0, 0)
+
+        # layout.addWidget(QLabel("zakladni info"))
+        # layout.addWidget(QLabel("filtry"))
+        # layout.addWidget(QLabel("menu pro tvorbu grafu"))
         # layout.addWidget(QLabel("data"))
         # add file name info on top
         # self.file_name_label = QLabel() TODO duplicate label
@@ -683,12 +709,10 @@ class MainWindow(QMainWindow):
         # info_panel_layout = QGridLayout()
 
         # LAYOUT BOTTOM - DATAFRAME VIEW # # TODO RENAME
-        self.dff_table_view = QTableView()
+        # self.dff_table_view = QTableView()
         # self.dff_table_view.horizontalHeader().setStretchLastSection(True)
         # self.dff_table_view.setAlternatingRowColors(True)
         # self.dff_table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
-
-        layout.addWidget(self.dff_table_view)
 
         return layout
 
@@ -732,45 +756,66 @@ class MainWindow(QMainWindow):
     def load_csv(self) -> None:
         # TODO zde se bude otvirat nove okno a bude tu detekce sloupcu
 
+        # TODO delete test
+        if True:
+            # file_path = "data/mega104-14-12-18-ioa.csv"
+            # self.df = dsl.load_data(file_path, dtype, dialect)
+            self.df = pd.read_pickle("save/df.pkl")
+            self.df_model = DataFrameModel(self.df)
+            self.table_view.setModel(self.df_model)
+            import pickle
+
+            with open("save/fcn.pkl", "rb") as f:
+                self.file_col_name = pickle.load(f)
+
+            self.prepare_df()
+            self.update_stats("placeholder")
+
+            self.df.to_pickle("save/dfb.pkl")
+            return
+
         file_path, _ = QFileDialog.getOpenFileName(parent=self, caption="Open file", filter="CSV files (*.csv *.txt)")
 
         if file_path:
             dialog = OpenCsvWizard(file_path)
             if dialog.exec():
                 # TODO exception
-                dialect, dtype, x = dialog.get_csv_settings()
-                # print(dtype)
+                dialect, dtype, self.file_col_name = dialog.get_csv_settings()
+                print(self.file_col_name)
                 self.df = dsl.load_data(file_path, dtype, dialect)
-                self.file_name_label.setText(os.path.basename(file_path))
-                self.df_model = PandasModel(self.df)
-                self.df_table_view.setModel(self.df_model)
-                self.update_stats()
+                self.df_model = DataFrameModel(self.df)
+                self.table_view.setModel(self.df_model)
+                self.prepare_df()
+                self.update_stats(file_path)
 
-                print(self.df.info())
+                import pickle
 
-            # try:
-            #     dialog = OpenCsv()
-            #     dialog.exec()
+                # TODO delete
+                self.df.to_pickle("save/df.pkl")
+                with open("save/fcn.pkl", "wb") as f:
+                    pickle.dump(self.file_col_name, f)
 
-            #     self.df = dsl.load_data(file_path, FileColumnNames(
-            #         "TimeStamp", "Relative Time", "srcIP", "dstIP", "srcPort", "dstPort"))
-            #     model = PandasModel(self.df)
-            #     self.df_table_view.setModel(model)
-            # except Exception:  # TODO odstranit tuhle nehezkou vec
-            #     error_dialog = QErrorMessage()
-            #     error_dialog.showMessage('An error occurred while loading data')
-            #     error_dialog.exec()
+    def prepare_df(self) -> None:
+        dsc.convert_to_timeseries(self.df, self.file_col_name, inplace=True)
+        dsc.add_relative_days(self.df, self.file_col_name, inplace=True)
 
-    def update_stats(self) -> None:
-        # TODO doc
-        self.entries.set_value(len(self.df.index))
-        self.column_count.set_value(len(self.df.columns))
+    def update_stats(self, file_path: str) -> None:
+        self.stat_widgets["File name"].set_value(os.path.basename(file_path))
+        self.stat_widgets["Row count"].set_value(len(self.df.index))
+        self.stat_widgets["Column count"].set_value(len(self.df.columns))
+        self.stat_widgets["Time span"].set_value(dsa.compute_time_span(self.df, self.file_col_name))
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     window = MainWindow()
+
+    # window.df = pd.read_pickle("save/a.pkl")
+    # window.df_model = DataFrameModel(window.df)
+    # window.table_view.setModel(window.df_model)
+    # window.update_stats("placeholder")
+
     window.show()
 
     # wizard = OpenCsvWizard("data/mega104-14-12-18-ioa.csv")

@@ -3,18 +3,21 @@ import pandas as pd
 
 from bidict import bidict
 
-from .utils.dataobjects import CommunicationPair
+from .utils.dataobjects import CommunicationPair, FileColumnNames
 
 
 # region Utilities
 
-def convert_to_timeseries(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
+
+def convert_to_timeseries(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool = False) -> pd.DataFrame:
     """Convert timeStamp column to datetime index.
 
     Parameters
     ----------
     df : pd.DataFrame
         Input dataframe.
+    fcn : FileColumnNames
+        Real names of predefined columns.
     inplace : bool, optional
         Whether to perform the operation in place on the data.
         by default False
@@ -26,20 +29,19 @@ def convert_to_timeseries(df: pd.DataFrame, inplace: bool = False) -> pd.DataFra
 
     Preconditions
     ------------
-    Dataframe must have column 'timeStamp' of np.datetime64 type (or its subtype).
+    Dataframe must have timeStamp column of np.datetime64 type (or its subtype).
 
     Notes
     -----
     Should be called after add_relative_days()
     """
-    assert 'timeStamp' in df.columns
-    assert np.issubdtype(df['timeStamp'].dtype, np.datetime64)
+    assert fcn.timestamp in df.columns
+    assert np.issubdtype(df[fcn.timestamp].dtype, np.datetime64)
 
     if not inplace:
         df = df.copy()
 
-    df = df.set_index(pd.DatetimeIndex(df['timeStamp'])).drop(
-        ['timeStamp'], axis=1)
+    df = df.set_index(pd.DatetimeIndex(df[fcn.timestamp])).drop([fcn.timestamp], axis=1)
     return df
 
 
@@ -63,12 +65,11 @@ def find_communication_pairs_l3(df: pd.DataFrame) -> bidict[int, CommunicationPa
         Key: new id of communication pair
         Value: communication pair
     """
-    assert all(col in df.columns for col in ['srcIp', 'dstIp'])
+    assert all(col in df.columns for col in ["srcIp", "dstIp"])
 
     # get all combinations of ips occuring in the dataframe
-    list_of_tuples = df.loc[:, ['srcIp', 'dstIp']].value_counts().index.values
-    list_of_pairs = list(
-        map(lambda x: CommunicationPair(x[0], x[1]), list_of_tuples))
+    list_of_tuples = df.loc[:, ["srcIp", "dstIp"]].value_counts().index.values
+    list_of_pairs = list(map(lambda x: CommunicationPair(x[0], x[1]), list_of_tuples))
     ids = np.arange(1, len(list_of_pairs) + 1, dtype=np.int64)
 
     return bidict(zip(ids, list_of_pairs))
@@ -94,22 +95,21 @@ def find_communication_pairs_l4(df: pd.DataFrame) -> bidict[int, CommunicationPa
         Key: new id of communication pair
         Value: communication pair
     """
-    assert all(col in df.columns for col in [
-               'srcIp', 'dstIp', 'srcPort', 'dstPort'])
+    assert all(col in df.columns for col in ["srcIp", "dstIp", "srcPort", "dstPort"])
 
     # get all combinations of ips occuring in the dataframe
-    list_of_tuples = df.loc[:, ['srcIp', 'dstIp',
-                                'srcPort', 'dstPort']].value_counts().index.values
-    list_of_pairs = list(map(lambda x: CommunicationPair(
-        x[0], x[1], x[2], x[3]), list_of_tuples))
+    list_of_tuples = df.loc[:, ["srcIp", "dstIp", "srcPort", "dstPort"]].value_counts().index.values
+    list_of_pairs = list(map(lambda x: CommunicationPair(x[0], x[1], x[2], x[3]), list_of_tuples))
     ids = np.arange(1, len(list_of_pairs) + 1, dtype=np.int64)
 
     return bidict(zip(ids, list_of_pairs))
+
 
 # endregion
 
 
 # region Custom column creators
+
 
 def add_inter_arrival_time_ad(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     """Add interArrivalTimeAD (all directions) column to dataframe.
@@ -129,19 +129,19 @@ def add_inter_arrival_time_ad(df: pd.DataFrame, inplace: bool = False) -> pd.Dat
     pd.DataFrame
         Dataframe with interArrivalTimeAD column.
     """
-    assert 'relTime' in df.columns
+    assert "relTime" in df.columns
 
     if not inplace:
         df = df.copy()
 
     # convert to numpy array
-    times = df['relTime'].values
+    times = df["relTime"].values
 
     # create shifted array (first emlement is doubled and the rest is shifted right)
     shifted = np.concatenate((times[0:1], times[:-1]))
 
     # compute inter arrival time
-    df['interArrivalTimeAD'] = times - shifted
+    df["interArrivalTimeAD"] = times - shifted
 
     return df
 
@@ -168,26 +168,26 @@ def add_inter_arrival_time_sd(df: pd.DataFrame, inplace: bool = False) -> pd.Dat
     -----
     Should be called after add_communication_direction()
     """
-    assert all(col in df.columns for col in ['relTime', 'masterToSlave'])
+    assert all(col in df.columns for col in ["relTime", "masterToSlave"])
 
     if not inplace:
         df = df.copy()
 
     # M2S inter arrival times
     # filter only relative times of packets in master to slave direction
-    times = df.loc[df['masterToSlave'], 'relTime'].values
+    times = df.loc[df["masterToSlave"], "relTime"].values
     shifted = np.concatenate((times[0:1], times[:-1]))
     m2s = times - shifted
 
     # S2M inter arrival times
-    times = df.loc[~df['masterToSlave'], 'relTime'].values
+    times = df.loc[~df["masterToSlave"], "relTime"].values
     shifted = np.concatenate((times[0:1], times[:-1]))
     s2m = times - shifted
 
     assert len(m2s) + len(s2m) == len(df.index)
 
     # get masks
-    mask_m2s = df['masterToSlave'].values
+    mask_m2s = df["masterToSlave"].values
     mask_s2m = np.invert(mask_m2s)
     df_len = len(df.index)
 
@@ -200,7 +200,7 @@ def add_inter_arrival_time_sd(df: pd.DataFrame, inplace: bool = False) -> pd.Dat
     result[m2s_indices] = m2s
     result[s2m_indices] = s2m
 
-    df['interArrivalTimeSD'] = result
+    df["interArrivalTimeSD"] = result
 
     return df
 
@@ -221,22 +221,22 @@ def add_communication_id_l3(df: pd.DataFrame, inplace: bool = False) -> pd.DataF
     pd.DataFrame
         Dataframe with new L3 communication ID column.
     """
-    assert all(col in df.columns for col in ['srcIp', 'dstIp'])
+    assert all(col in df.columns for col in ["srcIp", "dstIp"])
 
     if not inplace:
         df = df.copy()
 
     comm_pairs_l3_bidict = find_communication_pairs_l3(df)
 
-    srcIPs = df['srcIp'].values
-    dstIPs = df['dstIp'].values
+    srcIPs = df["srcIp"].values
+    dstIPs = df["dstIp"].values
 
     def f(a, b):
         return comm_pairs_l3_bidict.inv[CommunicationPair(a, b)]
 
     vf = np.vectorize(f)
 
-    df['l3commId'] = vf(srcIPs, dstIPs)
+    df["l3commId"] = vf(srcIPs, dstIPs)
 
     return df
 
@@ -257,25 +257,24 @@ def add_communication_id_l4(df: pd.DataFrame, inplace: bool = False) -> pd.DataF
     pd.DataFrame
         Dataframe with new L4 communication ID column.
     """
-    assert all(col in df.columns for col in [
-               'srcIp', 'dstIp', 'srcPort', 'dstPort'])
+    assert all(col in df.columns for col in ["srcIp", "dstIp", "srcPort", "dstPort"])
 
     if not inplace:
         df = df.copy()
 
     comm_pairs_l4_bidict = find_communication_pairs_l4(df)
 
-    srcIPs = df['srcIp'].values
-    dstIPs = df['dstIp'].values
-    srcPorts = df['srcPort'].values
-    dstPorts = df['dstPort'].values
+    srcIPs = df["srcIp"].values
+    dstIPs = df["dstIp"].values
+    srcPorts = df["srcPort"].values
+    dstPorts = df["dstPort"].values
 
     def f(a, b, c, d):
         return comm_pairs_l4_bidict.inv[CommunicationPair(a, b, c, d)]
 
     vf = np.vectorize(f)
 
-    df['l4commId'] = vf(srcIPs, dstIPs, srcPorts, dstPorts)
+    df["l4commId"] = vf(srcIPs, dstIPs, srcPorts, dstPorts)
 
     return df
 
@@ -301,18 +300,18 @@ def add_communication_direction(df: pd.DataFrame, master_station_ip: str, inplac
     pd.DataFrame
         Dataframe with new 'masterToSlave' column.
     """
-    assert 'srcIp' in df.columns
+    assert "srcIp" in df.columns
 
     if not inplace:
         df = df.copy()
 
-    srcIPs = df['srcIp'].values
-    df['masterToSlave'] = srcIPs == master_station_ip
+    srcIPs = df["srcIp"].values
+    df["masterToSlave"] = srcIPs == master_station_ip
 
     return df
 
 
-def add_relative_days(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
+def add_relative_days(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool = False) -> pd.DataFrame:
     """Add a realtive day column and update dateTime column.
 
     The relative day will be added to the dateTime column.
@@ -322,6 +321,8 @@ def add_relative_days(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     ----------
     df : pd.DataFrame
         Input dataframe.
+    fcn : FileColumnNames
+        Real names of predefined columns.
     inplace : bool, optional
         Whether to perform the operation in place on the data.
         by default False
@@ -329,37 +330,37 @@ def add_relative_days(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-        Dataframe with new 'relativeDay' column and updated 'timeStamp' column.
+        Dataframe with new relativeDay column and updated timeStamp column.
 
     Preconditions
     ------------
-    Dataframe must have column 'timeStamp' of np.datetime64 type (or its subtype).
+    Dataframe must have timeStamp column of np.datetime64 type (or its subtype).
 
     Notes
     -----
     Should be called before convert_to_timeseries()
     """
-    assert 'timeStamp' in df.columns
+    assert fcn.timestamp in df.columns
+    assert fcn.rel_day not in df.columns
 
     if not inplace:
         df = df.copy()
 
     # convert to numpy array
-    dates = df['timeStamp'].values
+    dates = df[fcn.timestamp].values
 
     # create shifted array
-    zero = [np.datetime64(0, 's')]
+    zero = [np.datetime64(0, "s")]
     shifted = np.concatenate((zero, dates[:-1]))
 
     # compute relative days
     # first get ones on rows where the time is smaller than on the previous row
     # then use cumulative sum to get a relative day value for every row
     relative_days = np.where(dates < shifted, 1, 0).cumsum()
-    df['relativeDay'] = relative_days
+    df[fcn.rel_day] = relative_days
 
     # add relative day to timestamp column
-    df['timeStamp'] = df['timeStamp'].values + \
-        relative_days * np.timedelta64(1, 'D')
+    df[fcn.timestamp] = df[fcn.timestamp].values + relative_days * np.timedelta64(1, "D")
 
     return df
 
