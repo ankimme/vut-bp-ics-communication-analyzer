@@ -9,6 +9,9 @@ from bidict import bidict
 import numpy as np
 import pandas as pd
 
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
+
 from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex, QAbstractListModel, pyqtSlot, QAbstractItemModel
 from PyQt6.QtWidgets import (
     QApplication,
@@ -592,6 +595,13 @@ class InfoLabel(QLabel):
             self.setText(f"{self._property}: {new_value}")
 
 
+class MplCanvas(FigureCanvasQTAgg):
+    def __init__(self, parent=None, width=5, height=4, dpi=300) -> None:
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+        super().__init__(fig)
+
+
 # endregion
 
 
@@ -640,11 +650,16 @@ class MainWindow(QMainWindow):
         primary_widget = self.create_original_df_view()
 
         secondary_widget = QWidget()
-        secondary_layout = self.create_secondary_layout()
-        secondary_widget.setLayout(secondary_layout)
+        self.secondary_layout = self.create_secondary_layout()
+        secondary_widget.setLayout(self.secondary_layout)
+
+        tertiary_widget = QWidget()
+        self.tertiary_layout = self.create_tertiary_layout()
+        tertiary_widget.setLayout(self.tertiary_layout)
 
         tabs.addTab(primary_widget, "Original Dataframe")
         tabs.addTab(secondary_widget, "Secondary view")
+        tabs.addTab(tertiary_widget, "Tertiary view")
         self.setCentralWidget(tabs)
 
     def create_original_df_view(self) -> QTableView:
@@ -683,38 +698,45 @@ class MainWindow(QMainWindow):
         return self.table_view
 
     def create_secondary_layout(self) -> QVBoxLayout:
-        # TODO add vars to doc
+        # TODO add vars to doc, rename
         layout = QVBoxLayout()
 
-        stat_names = ["File name", "Row count", "Column count", "Time span"]
+        # BASIC STATS #
+        stat_names = ["File name", "Row count", "Column count", "Time span", "L3 pairs count", "L4 pairs count"]
 
         for stat in stat_names:
             w = InfoLabel(stat)
             self.stat_widgets[stat] = w
             layout.addWidget(w)
 
-        # BASIC STATS #
-        # grid_layout = QGridLayout()
-        # grid_layout.addWidget(, 0, 0)
+        return layout
 
-        # layout.addWidget(QLabel("zakladni info"))
-        # layout.addWidget(QLabel("filtry"))
-        # layout.addWidget(QLabel("menu pro tvorbu grafu"))
-        # layout.addWidget(QLabel("data"))
-        # add file name info on top
-        # self.file_name_label = QLabel() TODO duplicate label
-        # layout.addWidget(self.file_name_label)
+    def update_secondary_layout(self, file_path: str) -> None:
+        self.stat_widgets["File name"].set_value(os.path.basename(file_path))
+        self.stat_widgets["Row count"].set_value(len(self.df.index))
+        self.stat_widgets["Column count"].set_value(len(self.df.columns))
+        self.stat_widgets["Time span"].set_value(dsa.compute_time_span(self.df, self.file_col_name))
+        self.stat_widgets["L3 pairs count"].set_value(dsa.l3_pairs_count(self.df, self.file_col_name))
+        self.stat_widgets["L4 pairs count"].set_value(dsa.l4_pairs_count(self.df, self.file_col_name))
 
-        # LAYOUT TOP - INFORMATION PANEL #
-        # info_panel_layout = QGridLayout()
-
-        # LAYOUT BOTTOM - DATAFRAME VIEW # # TODO RENAME
-        # self.dff_table_view = QTableView()
-        # self.dff_table_view.horizontalHeader().setStretchLastSection(True)
-        # self.dff_table_view.setAlternatingRowColors(True)
-        # self.dff_table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
+    def create_tertiary_layout(self) -> QVBoxLayout:
+        layout = QVBoxLayout()
 
         return layout
+
+    def update_tertiary_layout(self) -> None:
+        assert self.file_col_name.l4_pair_id in self.df.columns
+
+        # remove old widgets
+        for i in reversed(range(self.tertiary_layout.count())):
+            self.tertiary_layout.itemAt(i).widget().setParent(None)
+
+        for pair_id in self.df[self.file_col_name.l4_pair_id].unique():
+            sc = MplCanvas(self, width=5, height=4, dpi=100)
+            dsa.plot_pair_flow(self.df, self.file_col_name, pair_id, sc.axes)
+            self.tertiary_layout.addWidget(sc)
+
+        self.tertiary_layout.update()
 
     def create_actions(self) -> dict[str, QAction]:
         """Define QActions.
@@ -757,6 +779,7 @@ class MainWindow(QMainWindow):
         # TODO zde se bude otvirat nove okno a bude tu detekce sloupcu
 
         # TODO delete test
+
         if True:
             # file_path = "data/mega104-14-12-18-ioa.csv"
             # self.df = dsl.load_data(file_path, dtype, dialect)
@@ -769,7 +792,8 @@ class MainWindow(QMainWindow):
                 self.file_col_name = pickle.load(f)
 
             self.prepare_df()
-            self.update_stats("placeholder")
+            self.update_secondary_layout("placeholder")
+            self.update_tertiary_layout()
 
             self.df.to_pickle("save/dfb.pkl")
             return
@@ -785,8 +809,9 @@ class MainWindow(QMainWindow):
                 self.df = dsl.load_data(file_path, dtype, dialect)
                 self.df_model = DataFrameModel(self.df)
                 self.table_view.setModel(self.df_model)
-                self.prepare_df()
-                self.update_stats(file_path)
+                # self.prepare_df()
+                # self.update_stats(file_path)
+                # self.update_tertiary_layout()
 
                 import pickle
 
@@ -796,14 +821,11 @@ class MainWindow(QMainWindow):
                     pickle.dump(self.file_col_name, f)
 
     def prepare_df(self) -> None:
-        dsc.convert_to_timeseries(self.df, self.file_col_name, inplace=True)
         dsc.add_relative_days(self.df, self.file_col_name, inplace=True)
-
-    def update_stats(self, file_path: str) -> None:
-        self.stat_widgets["File name"].set_value(os.path.basename(file_path))
-        self.stat_widgets["Row count"].set_value(len(self.df.index))
-        self.stat_widgets["Column count"].set_value(len(self.df.columns))
-        self.stat_widgets["Time span"].set_value(dsa.compute_time_span(self.df, self.file_col_name))
+        # self.df = dsc.convert_to_timeseries(self.df, self.file_col_name) TODO delete
+        dsc.add_communication_id_l3(self.df, self.file_col_name, inplace=True)
+        dsc.add_communication_id_l4(self.df, self.file_col_name, inplace=True)
+        dsc.add_pair_id(self.df, self.file_col_name, inplace=True)
 
 
 if __name__ == "__main__":

@@ -24,6 +24,7 @@ class CommunicationPair:
     dst_port: int = None
 
 
+
 @dataclass()
 class FileColumnNames:
     """Column names as found in file.
@@ -44,15 +45,29 @@ class FileColumnNames:
         Real name of dstPort column.
     rel_day : str
         Real name of relative day column.
+    l3_communication_id : str
+        Real name of L3 communication ID column.
+    l4_communication_id : str
+        Real name of L4 communication ID column.
+    l4_pair_id : str
+        Real name of L4 pair ID column.
+
+    Notes
+    -----
+    Communication ID = A->B and B->A communications have a different ID.
+    Pair ID = A->B and B->A have the same ID.
     """
 
     timestamp: str = None
-    rel_time: str = None
+    rel_time: str = "Relative time"
     src_ip: str = None
     dst_ip: str = None
     src_port: str = None
     dst_port: str = None
-    rel_day : str = None
+    rel_day: str = "Relative Day"
+    l3_communication_id: str = "L3 Communication id"
+    l4_communication_id: str = "L4 Communication id"
+    l4_pair_id: str = "L4 pair id"
 
     # def __str__(self) -> str:
     #     return f"timestamp: {self.timestamp}\nrel_time: {self.rel_time}\nsrc_ip: {self.src_ip}\ndst_ip: {self.dst_ip}\nsrc_port: {self.src_port}\ndst_port: {self.dst_port}"

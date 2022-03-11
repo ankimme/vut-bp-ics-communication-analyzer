@@ -24,9 +24,10 @@ def load_data(file_name: str, dtype: dict[str, str], dialect: csv.Dialect, row_l
     # if any(value is None for value in col_names.__dict__.values()):
     #     raise Exception()
 
+    # TODO delete
     # df = df.rename(
     #     columns={
-    #         col_names.timestamp: "timeStamp",
+    #         col_name.timestamp: "timeStamp",
     #         col_names.rel_time: "relTime",
     #         col_names.src_ip: "srcIp",
     #         col_names.dst_ip: "dstIp",

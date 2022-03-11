@@ -39,10 +39,13 @@ Popsat experimenty na útocích
 
 zakladni info:
 delka trvani (kolik hodin) je v datasetu
-pocet zarizeni a pocet dvojice s rozkliknutim na podrobnosti
+pocet zarizeni a pocet dvojice s rozkliknutim na podrobnosti 
 
 
 workflow
 
 
 change parser
+
+
+automatic detection of datetime

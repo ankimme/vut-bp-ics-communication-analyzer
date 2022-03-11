@@ -9,7 +9,7 @@ from .utils.dataobjects import CommunicationPair, FileColumnNames
 # region Utilities
 
 
-def convert_to_timeseries(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool = False) -> pd.DataFrame:
+def convert_to_timeseries(df: pd.DataFrame, fcn: FileColumnNames) -> pd.DataFrame:
     """Convert timeStamp column to datetime index.
 
     Parameters
@@ -18,9 +18,6 @@ def convert_to_timeseries(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool 
         Input dataframe.
     fcn : FileColumnNames
         Real names of predefined columns.
-    inplace : bool, optional
-        Whether to perform the operation in place on the data.
-        by default False
 
     Returns
     -------
@@ -38,14 +35,11 @@ def convert_to_timeseries(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool 
     assert fcn.timestamp in df.columns
     assert np.issubdtype(df[fcn.timestamp].dtype, np.datetime64)
 
-    if not inplace:
-        df = df.copy()
-
     df = df.set_index(pd.DatetimeIndex(df[fcn.timestamp])).drop([fcn.timestamp], axis=1)
     return df
 
 
-def find_communication_pairs_l3(df: pd.DataFrame) -> bidict[int, CommunicationPair]:
+def find_communication_pairs_l3(df: pd.DataFrame, fcn: FileColumnNames) -> bidict[int, CommunicationPair]:
     """Find all L3 communication pairs.
 
     Identify all unique L3 communicaion pairs in dataframe and assign an id.
@@ -56,6 +50,8 @@ def find_communication_pairs_l3(df: pd.DataFrame) -> bidict[int, CommunicationPa
     ----------
     df : pd.DataFrame
         Input dataframe.
+    fcn : FileColumnNames
+        Real names of predefined columns.
 
     Returns
     -------
@@ -65,17 +61,17 @@ def find_communication_pairs_l3(df: pd.DataFrame) -> bidict[int, CommunicationPa
         Key: new id of communication pair
         Value: communication pair
     """
-    assert all(col in df.columns for col in ["srcIp", "dstIp"])
+    assert all(col in df.columns for col in [fcn.src_ip, fcn.dst_ip])
 
     # get all combinations of ips occuring in the dataframe
-    list_of_tuples = df.loc[:, ["srcIp", "dstIp"]].value_counts().index.values
+    list_of_tuples = df.loc[:, [fcn.src_ip, fcn.dst_ip]].value_counts().index.values
     list_of_pairs = list(map(lambda x: CommunicationPair(x[0], x[1]), list_of_tuples))
     ids = np.arange(1, len(list_of_pairs) + 1, dtype=np.int64)
 
     return bidict(zip(ids, list_of_pairs))
 
 
-def find_communication_pairs_l4(df: pd.DataFrame) -> bidict[int, CommunicationPair]:
+def find_communication_pairs_l4(df: pd.DataFrame, fcn: FileColumnNames) -> bidict[int, CommunicationPair]:
     """Find all L4 communication pairs.
 
     Identify all unique L4 communicaion pairs in dataframe and assign an id.
@@ -86,6 +82,8 @@ def find_communication_pairs_l4(df: pd.DataFrame) -> bidict[int, CommunicationPa
     ----------
     df : pd.DataFrame
         Input dataframe.
+    fcn : FileColumnNames
+        Real names of predefined columns.
 
     Returns
     -------
@@ -95,10 +93,10 @@ def find_communication_pairs_l4(df: pd.DataFrame) -> bidict[int, CommunicationPa
         Key: new id of communication pair
         Value: communication pair
     """
-    assert all(col in df.columns for col in ["srcIp", "dstIp", "srcPort", "dstPort"])
+    assert all(col in df.columns for col in [fcn.src_ip, fcn.dst_ip, fcn.src_port, fcn.dst_port])
 
     # get all combinations of ips occuring in the dataframe
-    list_of_tuples = df.loc[:, ["srcIp", "dstIp", "srcPort", "dstPort"]].value_counts().index.values
+    list_of_tuples = df.loc[:, [fcn.src_ip, fcn.dst_ip, fcn.src_port, fcn.dst_port]].value_counts().index.values
     list_of_pairs = list(map(lambda x: CommunicationPair(x[0], x[1], x[2], x[3]), list_of_tuples))
     ids = np.arange(1, len(list_of_pairs) + 1, dtype=np.int64)
 
@@ -111,7 +109,7 @@ def find_communication_pairs_l4(df: pd.DataFrame) -> bidict[int, CommunicationPa
 # region Custom column creators
 
 
-def add_inter_arrival_time_ad(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
+def add_inter_arrival_time_ad(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool = False) -> pd.DataFrame:
     """Add interArrivalTimeAD (all directions) column to dataframe.
 
     Use all packets. Direction does not matter.
@@ -120,6 +118,8 @@ def add_inter_arrival_time_ad(df: pd.DataFrame, inplace: bool = False) -> pd.Dat
     ----------
     df : pd.DataFrame
         Input dataframe.
+    fcn : FileColumnNames
+        Real names of predefined columns.
     inplace : bool, optional
         Whether to perform the operation in place on the data.
         by default False
@@ -129,13 +129,13 @@ def add_inter_arrival_time_ad(df: pd.DataFrame, inplace: bool = False) -> pd.Dat
     pd.DataFrame
         Dataframe with interArrivalTimeAD column.
     """
-    assert "relTime" in df.columns
+    assert fcn.rel_time in df.columns
 
     if not inplace:
         df = df.copy()
 
     # convert to numpy array
-    times = df["relTime"].values
+    times = df[fcn.rel_time].values
 
     # create shifted array (first emlement is doubled and the rest is shifted right)
     shifted = np.concatenate((times[0:1], times[:-1]))
@@ -146,7 +146,7 @@ def add_inter_arrival_time_ad(df: pd.DataFrame, inplace: bool = False) -> pd.Dat
     return df
 
 
-def add_inter_arrival_time_sd(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
+def add_inter_arrival_time_sd(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool = False) -> pd.DataFrame:
     """Add interArrivalTimeSD (single direction) column to dataframe.
 
     Use only packets in same direction.
@@ -155,6 +155,8 @@ def add_inter_arrival_time_sd(df: pd.DataFrame, inplace: bool = False) -> pd.Dat
     ----------
     df : pd.DataFrame
         Input dataframe.
+    fcn : FileColumnNames
+        Real names of predefined columns.
     inplace : bool, optional
         Whether to perform the operation in place on the data.
         by default False
@@ -168,19 +170,19 @@ def add_inter_arrival_time_sd(df: pd.DataFrame, inplace: bool = False) -> pd.Dat
     -----
     Should be called after add_communication_direction()
     """
-    assert all(col in df.columns for col in ["relTime", "masterToSlave"])
+    assert all(col in df.columns for col in [fcn.rel_time, "masterToSlave"])
 
     if not inplace:
         df = df.copy()
 
     # M2S inter arrival times
     # filter only relative times of packets in master to slave direction
-    times = df.loc[df["masterToSlave"], "relTime"].values
+    times = df.loc[df["masterToSlave"], fcn.rel_time].values
     shifted = np.concatenate((times[0:1], times[:-1]))
     m2s = times - shifted
 
     # S2M inter arrival times
-    times = df.loc[~df["masterToSlave"], "relTime"].values
+    times = df.loc[~df["masterToSlave"], fcn.rel_time].values
     shifted = np.concatenate((times[0:1], times[:-1]))
     s2m = times - shifted
 
@@ -205,13 +207,15 @@ def add_inter_arrival_time_sd(df: pd.DataFrame, inplace: bool = False) -> pd.Dat
     return df
 
 
-def add_communication_id_l3(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
+def add_communication_id_l3(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool = False) -> pd.DataFrame:
     """Add L3 communication id column to dataframe.
 
     Parameters
     ----------
     df : pd.DataFrame
         Input dataframe.
+    fcn : FileColumnNames
+        Real names of predefined columns.
     inplace : bool, optional
         Whether to perform the operation in place on the data.
         by default False
@@ -221,33 +225,35 @@ def add_communication_id_l3(df: pd.DataFrame, inplace: bool = False) -> pd.DataF
     pd.DataFrame
         Dataframe with new L3 communication ID column.
     """
-    assert all(col in df.columns for col in ["srcIp", "dstIp"])
+    assert all(col in df.columns for col in [fcn.src_ip, fcn.dst_ip])
 
     if not inplace:
         df = df.copy()
 
-    comm_pairs_l3_bidict = find_communication_pairs_l3(df)
+    comm_pairs_l3_bidict = find_communication_pairs_l3(df, fcn)
 
-    srcIPs = df["srcIp"].values
-    dstIPs = df["dstIp"].values
+    srcIPs = df[fcn.src_ip].values
+    dstIPs = df[fcn.dst_ip].values
 
     def f(a, b):
         return comm_pairs_l3_bidict.inv[CommunicationPair(a, b)]
 
     vf = np.vectorize(f)
 
-    df["l3commId"] = vf(srcIPs, dstIPs)
+    df[fcn.l3_communication_id] = vf(srcIPs, dstIPs)
 
     return df
 
 
-def add_communication_id_l4(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
+def add_communication_id_l4(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool = False) -> pd.DataFrame:
     """Add L4 communication id column to dataframe.
 
     Parameters
     ----------
     df : pd.DataFrame
         Input dataframe.
+    fcn : FileColumnNames
+        Real names of predefined columns.
     inplace : bool, optional
         Whether to perform the operation in place on the data.
         by default False
@@ -257,29 +263,29 @@ def add_communication_id_l4(df: pd.DataFrame, inplace: bool = False) -> pd.DataF
     pd.DataFrame
         Dataframe with new L4 communication ID column.
     """
-    assert all(col in df.columns for col in ["srcIp", "dstIp", "srcPort", "dstPort"])
+    assert all(col in df.columns for col in [fcn.src_ip, fcn.dst_ip, fcn.src_port, fcn.dst_port])
 
     if not inplace:
         df = df.copy()
 
-    comm_pairs_l4_bidict = find_communication_pairs_l4(df)
+    comm_pairs_l4_bidict = find_communication_pairs_l4(df, fcn)
 
-    srcIPs = df["srcIp"].values
-    dstIPs = df["dstIp"].values
-    srcPorts = df["srcPort"].values
-    dstPorts = df["dstPort"].values
+    srcIPs = df[fcn.src_ip].values
+    dstIPs = df[fcn.dst_ip].values
+    srcPorts = df[fcn.src_port].values
+    dstPorts = df[fcn.dst_port].values
 
     def f(a, b, c, d):
         return comm_pairs_l4_bidict.inv[CommunicationPair(a, b, c, d)]
 
     vf = np.vectorize(f)
 
-    df["l4commId"] = vf(srcIPs, dstIPs, srcPorts, dstPorts)
+    df[fcn.l4_communication_id] = vf(srcIPs, dstIPs, srcPorts, dstPorts)
 
     return df
 
 
-def add_communication_direction(df: pd.DataFrame, master_station_ip: str, inplace: bool = False) -> pd.DataFrame:
+def add_communication_direction(df: pd.DataFrame, fcn: FileColumnNames, master_station_ip: str, inplace: bool = False) -> pd.DataFrame:
     """Add a bool column 'masterToSlave' determining whether the packet was sent from master to slave.
 
     True: master -> slave
@@ -289,6 +295,8 @@ def add_communication_direction(df: pd.DataFrame, master_station_ip: str, inplac
     ----------
     df : pd.DataFrame
         Input dataframe.
+    fcn : FileColumnNames
+        Real names of predefined columns.
     master_station : str
         Ip address of master station, use same format as ip address in dataset.
     inplace : bool, optional
@@ -300,13 +308,65 @@ def add_communication_direction(df: pd.DataFrame, master_station_ip: str, inplac
     pd.DataFrame
         Dataframe with new 'masterToSlave' column.
     """
-    assert "srcIp" in df.columns
+    assert fcn.src_ip in df.columns
 
     if not inplace:
         df = df.copy()
 
-    srcIPs = df["srcIp"].values
+    srcIPs = df[fcn.src_ip].values
     df["masterToSlave"] = srcIPs == master_station_ip
+
+    return df
+
+
+def add_pair_id(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool = False) -> pd.DataFrame:
+    """Add a pairId column determining the id of a communication pair. Direction does not matter.
+
+        Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+    fcn : FileColumnNames
+        Real names of predefined columns.
+    inplace : bool, optional
+        Whether to perform the operation in place on the data.
+        by default False
+
+    Returns
+    -------
+    pd.DataFrame
+        Dataframe with new 'pairId' column.
+    """
+    assert all(col in df.columns for col in [fcn.src_ip, fcn.dst_ip, fcn.src_port, fcn.dst_port])
+
+    def reversed_comm_pair(comm_pair: CommunicationPair) -> CommunicationPair:
+        return CommunicationPair(src_ip=comm_pair.dst_ip, dst_ip=comm_pair.src_ip, src_port=comm_pair.dst_port, dst_port=comm_pair.src_port)
+
+    if not inplace:
+        df = df.copy()
+
+    comm_pairs_l4_bidict = find_communication_pairs_l4(df, fcn)
+
+    x = {}
+
+    i = 0
+    for comm_pair in comm_pairs_l4_bidict.values():
+        if comm_pair not in x.values():
+            x[comm_pair] = i
+            x[reversed_comm_pair(comm_pair)] = i
+            i += 1
+
+    srcIPs = df[fcn.src_ip].values
+    dstIPs = df[fcn.dst_ip].values
+    srcPorts = df[fcn.src_port].values
+    dstPorts = df[fcn.dst_port].values
+
+    def f(a, b, c, d):
+        return x[CommunicationPair(a, b, c, d)]
+
+    vf = np.vectorize(f)
+
+    df[fcn.l4_pair_id] = vf(srcIPs, dstIPs, srcPorts, dstPorts)
 
     return df
 
@@ -397,7 +457,7 @@ def expand_values_to_columns(df: pd.DataFrame, col_name: str, inplace: bool = Fa
 
     original_values = df[col_name].values
 
-    unique_values = original_values.unique()
+    unique_values = np.unique(original_values)
 
     # drop nans in arrays of all types
     unique_values = unique_values[unique_values == unique_values]
