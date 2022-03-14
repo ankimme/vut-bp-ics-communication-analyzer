@@ -48,7 +48,7 @@ from PyQt6.QtGui import QIcon, QAction, QPalette, QColor
 import dsmanipulator.dsloader as dsl
 import dsmanipulator.dscreator as dsc
 import dsmanipulator.dsanalyzer as dsa
-from dsmanipulator.utils.dataobjects import FileColumnNames
+from dsmanipulator.utils.dataobjects import FileColumnNames, Station
 
 # region Models
 
@@ -178,7 +178,7 @@ class OpenCsvWizard(QWizard):
         self.file_name: str = file_name
         self.dialect: csv.Dialect = dsl.detect_dialect(file_name)  # TODO exceptions kdyz bude chybny vstup
         self.col_types_by_user: dict[str, TypeComboBox]
-        self.file_col_names: FileColumnNames
+        self.fcn: FileColumnNames
 
         self.addPage(PageSetDelimiter(parent=self))
         self.addPage(PageSetDataTypes(parent=self))
@@ -190,7 +190,7 @@ class OpenCsvWizard(QWizard):
         buttons_layout.append(QWizard.WizardButton.FinishButton)
         self.setButtonLayout(buttons_layout)
 
-    def get_csv_settings(self) -> tuple[csv.Dialect, dict[str, str]]:
+    def get_csv_settings(self) -> tuple[csv.Dialect, dict[str, str], FileColumnNames]:
         """
 
         Returns
@@ -205,7 +205,7 @@ class OpenCsvWizard(QWizard):
 
         """
         col_types: dict[str, str] = {key: value.currentText() for key, value in self.col_types_by_user.items()}
-        return self.dialect, col_types, self.file_col_names
+        return self.dialect, col_types, self.fcn
 
 
 class PageSetDelimiter(QWizardPage):
@@ -460,7 +460,7 @@ class PageSetDataTypes(QWizardPage):
     #     try:
     #         col_types = {key: value.currentText() for key, value in self.wizard().col_types_by_user.items()}
 
-    #         dsl.load_data(self.wizard().file_name, col_types, self.file_col_names, self.wizard().dialect, 100)
+    #         dsl.load_data(self.wizard().file_name, col_types, self.fcn, self.wizard().dialect, 100)
 
     #         return True
     #     except Exception as e:
@@ -472,7 +472,7 @@ class PageSetDataTypes(QWizardPage):
     # try:
     #     col_types = {key: value.currentText() for key, value in self.wizard().col_types_by_user.items()}
 
-    #     dsl.load_data(self.wizard().file_name, col_types, self.file_col_names, self.wizard().dialect, 100)
+    #     dsl.load_data(self.wizard().file_name, col_types, self.fcn, self.wizard().dialect, 100)
 
     #     self.warning_label.clear()
     # except Exception as e:
@@ -531,7 +531,8 @@ class PageSetDataTypes(QWizardPage):
     def isComplete(self) -> bool:
         try:
 
-            assert all(group.checkedButton() for group in self.groups.values())
+            mandatory_groups = [self.groups["timestamp"], self.groups["src_ip"], self.groups["dst_ip"]]
+            assert all(group.checkedButton() for group in mandatory_groups)
 
             col_types = {key: value.currentText() for key, value in self.wizard().col_types_by_user.items()}
 
@@ -540,8 +541,12 @@ class PageSetDataTypes(QWizardPage):
             self.warning_label.clear()
 
             return True
-        except Exception as e:
+        except (AssertionError) as e:  # todo filter errors
             self.warning_label.setText("Could not parse csv. (Based on first 100 rows)")
+            print(traceback.format_exc())
+            return False
+        except Exception as e:
+            # TODO DELETE
             print(traceback.format_exc())
             return False
 
@@ -602,6 +607,25 @@ class MplCanvas(FigureCanvasQTAgg):
         super().__init__(fig)
 
 
+class SelectMasterStationsDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Select master stations")
+
+        buttons = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+
+        self.buttonBox = QDialogButtonBox(buttons)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        self.layout = QVBoxLayout()
+        message = QLabel("Something happened, is that OK?")
+        self.layout.addWidget(message)
+        self.layout.addWidget(self.buttonBox)
+        self.setLayout(self.layout)
+
+
 # endregion
 
 
@@ -626,6 +650,9 @@ class MainWindow(QMainWindow):
         Main dataframe.
     df_model : DataFrameModel
         Model of original data.
+    self.station_ids: bidict[int, Station]
+        Key : ID of station
+        Value : Station
     """
 
     def __init__(self):
@@ -635,8 +662,10 @@ class MainWindow(QMainWindow):
 
         self.df: pd.DataFrame
         self.df_model: DataFrameModel
+        self.fcn: FileColumnNames
         self.stat_widgets: dict[str, InfoLabel] = {}
         self.actions = self.create_actions()
+        self.station_ids: bidict[int, Station]
 
         self.init_toolbar()
 
@@ -663,37 +692,12 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(tabs)
 
     def create_original_df_view(self) -> QTableView:
-        # # TODO add vars to doc
-        # layout = QVBoxLayout()
-
-        # # add file name info on top
-        # self.file_name_label = QLabel()
-        # layout.addWidget(self.file_name_label)
-
-        # # LAYOUT TOP - INFORMATION PANEL #
-        # info_panel_layout = QGridLayout()
-
-        # self.entries = InfoLabel("Entries")
-        # info_panel_layout.addWidget(self.entries, 0, 0)
-
-        # self.column_count = InfoLabel("Columns")
-        # info_panel_layout.addWidget(self.column_count, 0, 1)
-
-        # # set maximum stretch for all columns
-        # for i in range(info_panel_layout.columnCount()):
-        #     info_panel_layout.setColumnStretch(i, 1)
-
-        # info_panel_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # layout.addLayout(info_panel_layout)
-
         # LAYOUT BOTTOM - DATAFRAME VIEW #
         self.table_view = QTableView()
         self.table_view.setSortingEnabled(True)
         self.table_view.horizontalHeader().setStretchLastSection(True)
         self.table_view.setAlternatingRowColors(True)
         self.table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
-
-        # layout.addWidget(self.table_view)
 
         return self.table_view
 
@@ -702,7 +706,7 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout()
 
         # BASIC STATS #
-        stat_names = ["File name", "Row count", "Column count", "Time span", "L3 pairs count", "L4 pairs count"]
+        stat_names = ["File name", "Row count", "Column count", "Time span", "Pairs count"]
 
         for stat in stat_names:
             w = InfoLabel(stat)
@@ -715,9 +719,8 @@ class MainWindow(QMainWindow):
         self.stat_widgets["File name"].set_value(os.path.basename(file_path))
         self.stat_widgets["Row count"].set_value(len(self.df.index))
         self.stat_widgets["Column count"].set_value(len(self.df.columns))
-        self.stat_widgets["Time span"].set_value(dsa.compute_time_span(self.df, self.file_col_name))
-        self.stat_widgets["L3 pairs count"].set_value(dsa.l3_pairs_count(self.df, self.file_col_name))
-        self.stat_widgets["L4 pairs count"].set_value(dsa.l4_pairs_count(self.df, self.file_col_name))
+        self.stat_widgets["Time span"].set_value(dsa.compute_time_span(self.df, self.fcn))
+        self.stat_widgets["Pairs count"].set_value(dsa.pairs_count(self.df, self.fcn))
 
     def create_tertiary_layout(self) -> QVBoxLayout:
         layout = QVBoxLayout()
@@ -725,15 +728,15 @@ class MainWindow(QMainWindow):
         return layout
 
     def update_tertiary_layout(self) -> None:
-        assert self.file_col_name.l4_pair_id in self.df.columns
+        assert self.fcn.pair_id in self.df.columns
 
         # remove old widgets
         for i in reversed(range(self.tertiary_layout.count())):
             self.tertiary_layout.itemAt(i).widget().setParent(None)
 
-        for pair_id in self.df[self.file_col_name.l4_pair_id].unique():
+        for pair_id in self.df[self.fcn.pair_id].unique():
             sc = MplCanvas(self, width=5, height=4, dpi=100)
-            dsa.plot_pair_flow(self.df, self.file_col_name, pair_id, sc.axes)
+            dsa.plot_pair_flow(self.df, self.fcn, sc.axes, pair_id, self.comm_pairs)
             self.tertiary_layout.addWidget(sc)
 
         self.tertiary_layout.update()
@@ -758,6 +761,11 @@ class MainWindow(QMainWindow):
         # https://www.iconfinder.com/icons/352328/app_exit_to_icon
         actions["Exit"].triggered.connect(QApplication.instance().quit)  # TODO je to spravne?
 
+        # SELECT MASTER STATIONS #
+        actions["Select master stations"] = QAction(icon=QIcon(
+            "img/exit.png"), text="Select master stations", parent=self)
+        actions["Select master stations"].triggered.connect(self.select_master_stations)
+
         return actions
 
     def init_toolbar(self) -> None:
@@ -769,6 +777,7 @@ class MainWindow(QMainWindow):
         -----
         Should be called after create_actions().
         """
+
         self.toolbar = QToolBar("Main toolbar")
         self.addToolBar(self.toolbar)
 
@@ -789,11 +798,11 @@ class MainWindow(QMainWindow):
             import pickle
 
             with open("save/fcn.pkl", "rb") as f:
-                self.file_col_name = pickle.load(f)
+                self.fcn = pickle.load(f)
 
             self.prepare_df()
-            self.update_secondary_layout("placeholder")
-            self.update_tertiary_layout()
+            # self.update_secondary_layout("placeholder")
+            # self.update_tertiary_layout()
 
             self.df.to_pickle("save/dfb.pkl")
             return
@@ -804,8 +813,8 @@ class MainWindow(QMainWindow):
             dialog = OpenCsvWizard(file_path)
             if dialog.exec():
                 # TODO exception
-                dialect, dtype, self.file_col_name = dialog.get_csv_settings()
-                print(self.file_col_name)
+                dialect, dtype, self.fcn = dialog.get_csv_settings()
+                print(self.fcn)
                 self.df = dsl.load_data(file_path, dtype, dialect)
                 self.df_model = DataFrameModel(self.df)
                 self.table_view.setModel(self.df_model)
@@ -818,14 +827,23 @@ class MainWindow(QMainWindow):
                 # TODO delete
                 self.df.to_pickle("save/df.pkl")
                 with open("save/fcn.pkl", "wb") as f:
-                    pickle.dump(self.file_col_name, f)
+                    pickle.dump(self.fcn, f)
 
     def prepare_df(self) -> None:
-        dsc.add_relative_days(self.df, self.file_col_name, inplace=True)
-        # self.df = dsc.convert_to_timeseries(self.df, self.file_col_name) TODO delete
-        dsc.add_communication_id_l3(self.df, self.file_col_name, inplace=True)
-        dsc.add_communication_id_l4(self.df, self.file_col_name, inplace=True)
-        dsc.add_pair_id(self.df, self.file_col_name, inplace=True)
+        dsc.add_relative_days(self.df, self.fcn, inplace=True)
+        # self.df = dsc.convert_to_timeseries(self.df, self.fcn) TODO delete
+        # self.comm_pairs = dsc.find_communication_pairs(self.df, self.fcn)
+        # dsc.add_communication_id(self.df, self.fcn, self.comm_pairs, inplace=True)
+        # dsc.add_pair_id(self.df, self.fcn, inplace=True)
+        self.station_ids = dsc.create_station_ids(self.df, self.fcn)
+        dsc.add_station_id(self.df, self.fcn, self.station_ids, inplace=True)
+
+    def select_master_stations(self) -> None:
+        dlg = SelectMasterStationsDialog()
+        if dlg.exec():
+            print("Success!")
+        else:
+            print("Cancel!")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,14 @@
 from dataclasses import dataclass
+from collections import namedtuple
+
+# Pair of station ids. Source and destination.
+Direction = namedtuple("Direction", 'src dst')
+
+
+@dataclass(frozen=True)
+class Station:
+    ip: str
+    port: int = None
 
 
 @dataclass(frozen=True)
@@ -24,7 +34,6 @@ class CommunicationPair:
     dst_port: int = None
 
 
-
 @dataclass()
 class FileColumnNames:
     """Column names as found in file.
@@ -43,14 +52,22 @@ class FileColumnNames:
         Real name of srcPort column.
     dst_port : str
         Real name of dstPort column.
+
+    src_station_id : str
+        Real name of source station id column.
+    dst_station_id : str
+        Real name of destination station id column.
+    pair_id : str
+        Real name of pair ID column. (where direction DOES NOT matter).
+    direction_id : str
+        Real name of direction ID column. (where direction DOES matter).
+
     rel_day : str
         Real name of relative day column.
-    l3_communication_id : str
-        Real name of L3 communication ID column.
-    l4_communication_id : str
-        Real name of L4 communication ID column.
-    l4_pair_id : str
-        Real name of L4 pair ID column.
+
+    double_column_station : bool
+        True if both ip and port columns are assigned.
+        False if only one column is used for describing a station.
 
     Notes
     -----
@@ -59,15 +76,22 @@ class FileColumnNames:
     """
 
     timestamp: str = None
-    rel_time: str = "Relative time"
+    rel_time: str = "*Relative time##"
     src_ip: str = None
     dst_ip: str = None
     src_port: str = None
     dst_port: str = None
-    rel_day: str = "Relative Day"
-    l3_communication_id: str = "L3 Communication id"
-    l4_communication_id: str = "L4 Communication id"
-    l4_pair_id: str = "L4 pair id"
+
+    src_station_id: str = "*Source station id##"
+    dst_station_id: str = "*Destination station id##"
+    pair_id: str = "*Pair id##"
+    direction_id: str = "*Direction id##"
+
+    rel_day: str = "*Relative Day##"
+
+    @property
+    def double_column_station(self) -> bool:
+        return bool(self.src_port and self.dst_port)
 
     # def __str__(self) -> str:
     #     return f"timestamp: {self.timestamp}\nrel_time: {self.rel_time}\nsrc_ip: {self.src_ip}\ndst_ip: {self.dst_ip}\nsrc_port: {self.src_port}\ndst_port: {self.dst_port}"
