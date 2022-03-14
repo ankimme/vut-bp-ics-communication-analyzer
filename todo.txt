@@ -2,10 +2,6 @@ Exceptions: file does not exists
 
 Strategy pattern for adding custom columns
 
-Inner dictionary for custom column names?
-
-
-
 ----------------------------------------------------------------
 
 Jak se stavet k nan hodnotnam v slozenych tabulkach
@@ -49,3 +45,6 @@ change parser
 
 
 automatic detection of datetime
+
+prepsat communication pairs (muze byt dynamicky jen jeden sloupec treba)
+eventy
