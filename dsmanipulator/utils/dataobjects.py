@@ -2,13 +2,19 @@ from dataclasses import dataclass
 from collections import namedtuple
 
 # Pair of station ids. Source and destination.
-Direction = namedtuple("Direction", 'src dst')
+Direction = namedtuple("Direction", "src dst")
 
 
 @dataclass(frozen=True)
 class Station:
     ip: str
     port: int = None
+
+    def __str__(self) -> str:
+        if self.port:
+            return f"{self.ip}:{self.port}"
+        else:
+            return f"{self.ip}"
 
 
 @dataclass(frozen=True)

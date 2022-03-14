@@ -5,7 +5,7 @@ import pandas as pd
 import seaborn as sns
 
 from . import dscreator as dsc
-from .utils.dataobjects import FileColumnNames
+from .utils.dataobjects import Direction, FileColumnNames, Station
 
 from bidict import bidict
 from dsmanipulator.utils.dataobjects import CommunicationPair
@@ -21,9 +21,9 @@ def compute_time_span(df: pd.DataFrame, fcn: FileColumnNames):
 
 def pairs_count(df: pd.DataFrame, fcn: FileColumnNames):
     # TODO doc
-    assert fcn.communication_id in df.columns
+    assert fcn.pair_id in df.columns
 
-    return df[fcn.communication_id].nunique()
+    return df[fcn.pair_id].nunique()
 
 
 # endregion
@@ -32,15 +32,17 @@ def pairs_count(df: pd.DataFrame, fcn: FileColumnNames):
 # region Plotting
 
 
-def plot_pair_flow(df: pd.DataFrame, fcn: FileColumnNames,  axes: Axes, pair_id: int, comm_pairs_l4: bidict[int, CommunicationPair]):
-    assert all(col in df.columns for col in [fcn.timestamp, fcn.pair_id, fcn.communication_id])
+def plot_pair_flow(
+    df: pd.DataFrame, fcn: FileColumnNames, axes: Axes, pair_id: int, station_ids: bidict[int, Station], direction_ids: bidict[int, Direction]
+) -> None:
+    assert all(col in df.columns for col in [fcn.timestamp, fcn.pair_id, fcn.direction_id])
 
     # filter original dataframe and expand values
     tmpdf = df[df[fcn.pair_id] == pair_id]
-    tmpdf = dsc.expand_values_to_columns(tmpdf, fcn.communication_id, drop_column=True)
+    tmpdf = dsc.expand_values_to_columns(tmpdf, fcn.direction_id, drop_column=True)
 
     # names of expanded columns
-    expanded_cols: list[str] = list(filter(lambda x: fcn.communication_id in x, tmpdf.columns))
+    expanded_cols: list[str] = list(filter(lambda x: fcn.direction_id in x, tmpdf.columns))
 
     # filter only timestamp and expanded columns
     tmpdf = tmpdf[expanded_cols + [fcn.timestamp]]
@@ -48,32 +50,29 @@ def plot_pair_flow(df: pd.DataFrame, fcn: FileColumnNames,  axes: Axes, pair_id:
     # rename expanded cols so that the legend shows relevant information
     renamed_cols: dict[str, str] = {}
     for col in expanded_cols:
-        comm_id = col.rsplit(':', 1)[1]
-        # TODO error
-        comm_pair = comm_pairs_l4[int(comm_id)]
-        # line = tmpdf[tmpdf[fcn.l4_communication_id] == communication_id].head(1)
-        if fcn.double_column_station:
-            renamed_cols[col] = f"{comm_pair.src_ip}:{comm_pair.src_port} -> {comm_pair.dst_ip}:{comm_pair.dst_port}"
-        else:
-            # TODO test
-            renamed_cols[col] = f"{comm_pair.src_ip} -> {comm_pair.dst_ip}"
+        # TODO parse error
+        direction_id = int(col.rsplit(":", 1)[1])
+        src_station = station_ids[direction_ids[direction_id].src]
+        dst_station = station_ids[direction_ids[direction_id].dst]
+        renamed_cols[col] = f"{src_station} -> {dst_station}"
+
     tmpdf = tmpdf.rename(columns=renamed_cols)
 
     # convert index to datetimeindex for resampling
     tmpdf = dsc.convert_to_timeseries(tmpdf, fcn)
-    tmpdf = tmpdf.resample('30min').sum()
+    tmpdf = tmpdf.resample("5min").sum()
 
     # create column with sum
-    tmpdf.insert(0, 'Sum', 0)
-    tmpdf['Sum'] = tmpdf.sum(axis=1)
+    tmpdf.insert(0, "Sum", 0)
+    tmpdf["Sum"] = tmpdf.sum(axis=1)
 
-    axes.set_xlabel('Time')
-    axes.set_ylabel('Packet count')
-    axes.set_title('Packet count in time')
+    axes.set_xlabel("Time")
+    axes.set_ylabel("Packet count")
+    axes.set_title("Packet count in time")
     axes.grid(True)
 
     axes.xaxis.set_major_locator(AutoDateLocator())
-    axes.xaxis.set_major_formatter(DateFormatter('%H:%M'))
+    axes.xaxis.set_major_formatter(DateFormatter("%H:%M"))
 
     # plt.xlim([min(tmpdf.index), max(tmpdf.index)])
     axes.set_xlim([min(tmpdf.index), max(tmpdf.index)])

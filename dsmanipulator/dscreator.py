@@ -100,7 +100,7 @@ def create_pair_ids(df: pd.DataFrame, fcn: FileColumnNames) -> bidict[int, froze
     -------
     bidict[int, frozenset]
         Key : ID of station
-        Value : Pair of stations.
+        Value : Pair of station ids.
     """
     assert all(col in df.columns for col in [fcn.src_station_id, fcn.dst_station_id])
 
@@ -131,8 +131,8 @@ def create_direction_ids(df: pd.DataFrame, fcn: FileColumnNames) -> bidict[int, 
     Returns
     -------
     bidict[int, Direction]
-        Key : ID of station
-        Value : Pair of station ids. Source and destination
+        Key : ID of station.
+        Value : Pair of station ids. Source and destination.
     """
     assert all(col in df.columns for col in [fcn.src_station_id, fcn.dst_station_id])
 

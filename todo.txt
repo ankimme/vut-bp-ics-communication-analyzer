@@ -48,3 +48,10 @@ automatic detection of datetime
 
 prepsat communication pairs (muze byt dynamicky jen jeden sloupec treba)
 eventy
+
+
+enforce that timestamp column is of timestamp type
+
+
+TRIBUTE ICONS
+https://p.yusukekamiyamane.com/

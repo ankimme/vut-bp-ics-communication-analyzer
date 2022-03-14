@@ -42,13 +42,14 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QButtonGroup,
     QAbstractButton,
+    QMessageBox,
 )
 from PyQt6.QtGui import QIcon, QAction, QPalette, QColor
 
 import dsmanipulator.dsloader as dsl
 import dsmanipulator.dscreator as dsc
 import dsmanipulator.dsanalyzer as dsa
-from dsmanipulator.utils.dataobjects import FileColumnNames, Station
+from dsmanipulator.utils.dataobjects import Direction, FileColumnNames, Station
 
 # region Models
 
@@ -360,7 +361,7 @@ class PageSetDataTypes(QWizardPage):
             # group.buttonClicked.connect(self.completeChanged.emit)
 
     def initializePage(self) -> None:
-        self.wizard().file_col_names = FileColumnNames()
+        self.wizard().fcn = FileColumnNames()
 
         # grid header
         self.grid_layout.addWidget(QLabel("Name"), 0, 0, Qt.AlignmentFlag.AlignCenter)
@@ -492,7 +493,7 @@ class PageSetDataTypes(QWizardPage):
             csv_col_name = self.cols_ids[button.group().id(button)]
             attribute_name = self.groups.inv[button.group()]
 
-            self.wizard().file_col_names.__dict__[attribute_name] = csv_col_name
+            self.wizard().fcn.__dict__[attribute_name] = csv_col_name
 
             self.completeChanged.emit()
 
@@ -512,7 +513,7 @@ class PageSetDataTypes(QWizardPage):
         group.setExclusive(True)
 
         attribute_name = self.groups.inv[group]
-        self.wizard().file_col_names.__dict__[attribute_name] = None
+        self.wizard().fcn.__dict__[attribute_name] = None
 
         self.completeChanged.emit()
 
@@ -526,7 +527,7 @@ class PageSetDataTypes(QWizardPage):
             Button group.
         """
         attribute_name = self.groups.inv[group]
-        self.wizard().file_col_names.__dict__[attribute_name] = None
+        self.wizard().fcn.__dict__[attribute_name] = None
 
     def isComplete(self) -> bool:
         try:
@@ -608,22 +609,36 @@ class MplCanvas(FigureCanvasQTAgg):
 
 
 class SelectMasterStationsDialog(QDialog):
-    def __init__(self):
+    def __init__(self, station_ids: bidict[int, Station]):
         super().__init__()
 
         self.setWindowTitle("Select master stations")
 
-        buttons = QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-
-        self.buttonBox = QDialogButtonBox(buttons)
-        self.buttonBox.accepted.connect(self.accept)
-        self.buttonBox.rejected.connect(self.reject)
-
         self.layout = QVBoxLayout()
-        message = QLabel("Something happened, is that OK?")
-        self.layout.addWidget(message)
-        self.layout.addWidget(self.buttonBox)
+
+        self.boxes: dict[int, QCheckBox] = {}
+        for station_id, station in station_ids.items():
+            box = QCheckBox(str(station), self)
+            self.boxes[station_id] = box
+            self.layout.addWidget(box)
+
+        self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+
+        self.layout.addWidget(self.buttons)
         self.setLayout(self.layout)
+
+    @property
+    def foo(self):
+        return [id for id, box in self.boxes.items() if box.isChecked()]
+
+    # def click_box(self, state):
+
+    #     if state == Qt.CheckState.Checked:
+    #         print("Checked")
+    #     else:
+    #         print("Unchecked")
 
 
 # endregion
@@ -650,9 +665,17 @@ class MainWindow(QMainWindow):
         Main dataframe.
     df_model : DataFrameModel
         Model of original data.
+    self.master_station_ids : list[int]
+        List of station ids that should be treated as masters.
     self.station_ids: bidict[int, Station]
-        Key : ID of station
-        Value : Station
+        Key : ID of station.
+        Value : Station.
+    self.pair_ids: bidict[int, frozenset]
+        Key : ID of station.
+        Value : Pair of station ids.
+    self.direction_ids: bidict[int, Direction]
+        Key : ID of station.
+        Value : Pair of station ids. Source and destination.
     """
 
     def __init__(self):
@@ -660,12 +683,15 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("ICS Analyzer")
         self.setMinimumSize(800, 500)
 
-        self.df: pd.DataFrame
+        self.df: pd.DataFrame = None
         self.df_model: DataFrameModel
         self.fcn: FileColumnNames
         self.stat_widgets: dict[str, InfoLabel] = {}
         self.actions = self.create_actions()
+        self.master_station_ids: list[int]
         self.station_ids: bidict[int, Station]
+        self.pair_ids: bidict[int, frozenset]
+        self.direction_ids: bidict[int, Direction]
 
         self.init_toolbar()
 
@@ -734,9 +760,9 @@ class MainWindow(QMainWindow):
         for i in reversed(range(self.tertiary_layout.count())):
             self.tertiary_layout.itemAt(i).widget().setParent(None)
 
-        for pair_id in self.df[self.fcn.pair_id].unique():
+        for pair_id in self.pair_ids.keys():
             sc = MplCanvas(self, width=5, height=4, dpi=100)
-            dsa.plot_pair_flow(self.df, self.fcn, sc.axes, pair_id, self.comm_pairs)
+            dsa.plot_pair_flow(self.df, self.fcn, sc.axes, pair_id, self.station_ids, self.direction_ids)
             self.tertiary_layout.addWidget(sc)
 
         self.tertiary_layout.update()
@@ -756,15 +782,14 @@ class MainWindow(QMainWindow):
         # https://www.iconfinder.com/icons/290138/document_extension_file_format_paper_icon
         actions["Load CSV"].triggered.connect(self.load_csv)
 
+        # SELECT MASTER STATIONS #
+        actions["Select master stations"] = QAction(icon=QIcon("img/computa.png"), text="Select master stations", parent=self)
+        actions["Select master stations"].triggered.connect(self.select_master_stations)
+
         # EXIT #
         actions["Exit"] = QAction(icon=QIcon("img/exit.png"), text="Exit", parent=self)
         # https://www.iconfinder.com/icons/352328/app_exit_to_icon
         actions["Exit"].triggered.connect(QApplication.instance().quit)  # TODO je to spravne?
-
-        # SELECT MASTER STATIONS #
-        actions["Select master stations"] = QAction(icon=QIcon(
-            "img/exit.png"), text="Select master stations", parent=self)
-        actions["Select master stations"].triggered.connect(self.select_master_stations)
 
         return actions
 
@@ -801,8 +826,8 @@ class MainWindow(QMainWindow):
                 self.fcn = pickle.load(f)
 
             self.prepare_df()
-            # self.update_secondary_layout("placeholder")
-            # self.update_tertiary_layout()
+            self.update_secondary_layout("placeholder")
+            self.update_tertiary_layout()
 
             self.df.to_pickle("save/dfb.pkl")
             return
@@ -838,12 +863,22 @@ class MainWindow(QMainWindow):
         self.station_ids = dsc.create_station_ids(self.df, self.fcn)
         dsc.add_station_id(self.df, self.fcn, self.station_ids, inplace=True)
 
+        self.pair_ids = dsc.create_pair_ids(self.df, self.fcn)
+        dsc.add_pair_id(self.df, self.fcn, self.pair_ids, inplace=True)
+
+        self.direction_ids = dsc.create_direction_ids(self.df, self.fcn)
+        dsc.add_direction_id(self.df, self.fcn, self.direction_ids, inplace=True)
+
     def select_master_stations(self) -> None:
-        dlg = SelectMasterStationsDialog()
-        if dlg.exec():
-            print("Success!")
+        if self.df is not None:
+            dlg = SelectMasterStationsDialog(self.station_ids)
+            if dlg.exec():
+                self.master_station_ids = dlg.foo
         else:
-            print("Cancel!")
+            dlg = QMessageBox(self)
+            dlg.setWindowTitle("Warning")
+            dlg.setText("Pleas load a CSV file before proceeding")
+            dlg.exec()
 
 
 if __name__ == "__main__":
