@@ -43,6 +43,8 @@ from PyQt6.QtWidgets import (
     QButtonGroup,
     QAbstractButton,
     QMessageBox,
+    QScrollArea,
+    QSizePolicy,
 )
 from PyQt6.QtGui import QIcon, QAction, QPalette, QColor
 
@@ -708,13 +710,21 @@ class MainWindow(QMainWindow):
         self.secondary_layout = self.create_secondary_layout()
         secondary_widget.setLayout(self.secondary_layout)
 
-        tertiary_widget = QWidget()
-        self.tertiary_layout = self.create_tertiary_layout()
-        tertiary_widget.setLayout(self.tertiary_layout)
+        self.tertiary_scroll_area = QScrollArea()
+        self.tertiary_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.tertiary_scroll_area.setWidgetResizable(True)
+        self.tertiary_scroll_area.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # tertiary_widget = QWidget()
+        # self.tertiary_layout = QVBoxLayout()
+        # tertiary_widget.setLayout(self.tertiary_layout)
+        # w = QWidget()
+        # w.setLayout(self.tertiary_layout)
+        # tertiary_scroll_area.setWidget(w)
 
         tabs.addTab(primary_widget, "Original Dataframe")
         tabs.addTab(secondary_widget, "Secondary view")
-        tabs.addTab(tertiary_widget, "Tertiary view")
+        tabs.addTab(self.tertiary_scroll_area, "Tertiary view")
         self.setCentralWidget(tabs)
 
     def create_original_df_view(self) -> QTableView:
@@ -748,24 +758,36 @@ class MainWindow(QMainWindow):
         self.stat_widgets["Time span"].set_value(dsa.compute_time_span(self.df, self.fcn))
         self.stat_widgets["Pairs count"].set_value(dsa.pairs_count(self.df, self.fcn))
 
-    def create_tertiary_layout(self) -> QVBoxLayout:
-        layout = QVBoxLayout()
+    # def create_tertiary_layout(self) -> QVBoxLayout:
+    #     layout = QVBoxLayout()
 
-        return layout
+    #     return layout
 
     def update_tertiary_layout(self) -> None:
         assert self.fcn.pair_id in self.df.columns
 
         # remove old widgets
-        for i in reversed(range(self.tertiary_layout.count())):
-            self.tertiary_layout.itemAt(i).widget().setParent(None)
+        # for i in reversed(range(self.tertiary_layout.count())):
+        #     self.tertiary_layout.itemAt(i).widget().setParent(None)
 
+        # for pair_id in self.pair_ids.keys():
+        #     sc = MplCanvas(self, width=3, height=2, dpi=100)
+        #     dsa.plot_pair_flow(self.df, self.fcn, sc.axes, pair_id, self.station_ids, self.direction_ids)
+        #     self.tertiary_layout.addWidget(sc)
+
+        w = QWidget()
+
+        w.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+        vbox_layout = QVBoxLayout()
         for pair_id in self.pair_ids.keys():
-            sc = MplCanvas(self, width=5, height=4, dpi=100)
+            sc = MplCanvas(self, width=20, height=6, dpi=100)
             dsa.plot_pair_flow(self.df, self.fcn, sc.axes, pair_id, self.station_ids, self.direction_ids)
-            self.tertiary_layout.addWidget(sc)
+            vbox_layout.addWidget(sc)
+        w.setLayout(vbox_layout)
 
-        self.tertiary_layout.update()
+        self.tertiary_scroll_area.setWidget(w)
+        self.tertiary_scroll_area.update()
+        # self.tertiary_layout.update()
 
     def create_actions(self) -> dict[str, QAction]:
         """Define QActions.
@@ -843,9 +865,6 @@ class MainWindow(QMainWindow):
                 self.df = dsl.load_data(file_path, dtype, dialect)
                 self.df_model = DataFrameModel(self.df)
                 self.table_view.setModel(self.df_model)
-                # self.prepare_df()
-                # self.update_stats(file_path)
-                # self.update_tertiary_layout()
 
                 import pickle
 
@@ -853,6 +872,10 @@ class MainWindow(QMainWindow):
                 self.df.to_pickle("save/df.pkl")
                 with open("save/fcn.pkl", "wb") as f:
                     pickle.dump(self.fcn, f)
+
+                self.prepare_df()
+                self.update_secondary_layout(file_path)
+                self.update_tertiary_layout()
 
     def prepare_df(self) -> None:
         dsc.add_relative_days(self.df, self.fcn, inplace=True)
@@ -878,7 +901,17 @@ class MainWindow(QMainWindow):
             dlg = QMessageBox(self)
             dlg.setWindowTitle("Warning")
             dlg.setText("Pleas load a CSV file before proceeding")
+            dlg.setIcon(QMessageBox.Icon.Warning)
             dlg.exec()
+
+
+# class PlotListWidget(QWidget):
+#     def __init__(self, canvas: list[MplCanvas], parent=None):
+#         super().__init__(parent)
+#         self.main_layout = QVBoxLayout()
+#         for canva in canvas:
+#             self.main_layout.addWidget(canva)
+#         self.setLayout(self.main_layout)
 
 
 if __name__ == "__main__":
