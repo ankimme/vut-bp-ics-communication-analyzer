@@ -611,18 +611,31 @@ class MplCanvas(FigureCanvasQTAgg):
 
 
 class SelectMasterStationsDialog(QDialog):
+    """A simple dialog used for selecting the master station.
+    """
+
     def __init__(self, station_ids: bidict[int, Station]):
+        """Initialize the dialog window.
+
+        Parameters
+        ----------
+        station_ids : bidict[int, Station]
+            Key : ID of station.
+            Value : Station.
+        """
         super().__init__()
 
-        self.setWindowTitle("Select master stations")
+        self.setWindowTitle("Select master station")
 
         self.layout = QVBoxLayout()
 
-        self.boxes: dict[int, QCheckBox] = {}
+        self.button_group = QButtonGroup(self)
+
         for station_id, station in station_ids.items():
-            box = QCheckBox(str(station), self)
-            self.boxes[station_id] = box
-            self.layout.addWidget(box)
+            print(f"added {station}")
+            button = QRadioButton(str(station))
+            self.button_group.addButton(button, id=station_id)
+            self.layout.addWidget(button, Qt.AlignmentFlag.AlignCenter)
 
         self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.buttons.accepted.connect(self.accept)
@@ -631,9 +644,15 @@ class SelectMasterStationsDialog(QDialog):
         self.layout.addWidget(self.buttons)
         self.setLayout(self.layout)
 
-    @property
-    def foo(self):
-        return [id for id, box in self.boxes.items() if box.isChecked()]
+    def get_selected_station_id(self) -> int:
+        """Return the id of the selected station in dialog.
+
+        Returns
+        -------
+        int
+            ID of selected station.
+        """
+        return self.button_group.checkedId()
 
     # def click_box(self, state):
 
@@ -667,8 +686,8 @@ class MainWindow(QMainWindow):
         Main dataframe.
     df_model : DataFrameModel
         Model of original data.
-    self.master_station_ids : list[int]
-        List of station ids that should be treated as masters.
+    self.master_station_id : int
+        ID of station that should be treated as master.
     self.station_ids: bidict[int, Station]
         Key : ID of station.
         Value : Station.
@@ -690,7 +709,7 @@ class MainWindow(QMainWindow):
         self.fcn: FileColumnNames
         self.stat_widgets: dict[str, InfoLabel] = {}
         self.actions = self.create_actions()
-        self.master_station_ids: list[int]
+        self.master_station_id: int
         self.station_ids: bidict[int, Station]
         self.pair_ids: bidict[int, frozenset]
         self.direction_ids: bidict[int, Direction]
@@ -805,7 +824,8 @@ class MainWindow(QMainWindow):
         actions["Load CSV"].triggered.connect(self.load_csv)
 
         # SELECT MASTER STATIONS #
-        actions["Select master stations"] = QAction(icon=QIcon("img/computa.png"), text="Select master stations", parent=self)
+        actions["Select master stations"] = QAction(icon=QIcon(
+            "img/computa.png"), text="Select master stations", parent=self)
         actions["Select master stations"].triggered.connect(self.select_master_stations)
 
         # EXIT #
@@ -896,7 +916,8 @@ class MainWindow(QMainWindow):
         if self.df is not None:
             dlg = SelectMasterStationsDialog(self.station_ids)
             if dlg.exec():
-                self.master_station_ids = dlg.foo
+                self.master_station_id = dlg.get_selected_station_id()
+                # TODO trigger event
         else:
             dlg = QMessageBox(self)
             dlg.setWindowTitle("Warning")
