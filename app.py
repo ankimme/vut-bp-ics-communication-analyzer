@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# region Imports
+
 import csv
 import os
 import sys
@@ -52,6 +54,9 @@ import dsmanipulator.dsloader as dsl
 import dsmanipulator.dscreator as dsc
 import dsmanipulator.dsanalyzer as dsa
 from dsmanipulator.utils.dataobjects import Direction, FileColumnNames, Station
+
+# endregion
+
 
 # region Models
 
@@ -606,15 +611,17 @@ class InfoLabel(QLabel):
 class MplCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None, width=5, height=4, dpi=300) -> None:
         fig = Figure(figsize=(width, height), dpi=dpi)
+        fig.set_tight_layout(True)
         self.axes = fig.add_subplot(111)
         super().__init__(fig)
+        self.setParent(parent)
 
 
 class SelectMasterStationsDialog(QDialog):
     """A simple dialog used for selecting the master station.
     """
 
-    def __init__(self, station_ids: bidict[int, Station]):
+    def __init__(self, station_ids: bidict[int, Station], master_station_id: int = None):
         """Initialize the dialog window.
 
         Parameters
@@ -622,6 +629,8 @@ class SelectMasterStationsDialog(QDialog):
         station_ids : bidict[int, Station]
             Key : ID of station.
             Value : Station.
+        master_station_id : int, optional
+            Id of current master station.
         """
         super().__init__()
 
@@ -634,6 +643,8 @@ class SelectMasterStationsDialog(QDialog):
         for station_id, station in station_ids.items():
             print(f"added {station}")
             button = QRadioButton(str(station))
+            if station_id == master_station_id:
+                button.setChecked(True)
             self.button_group.addButton(button, id=station_id)
             self.layout.addWidget(button, Qt.AlignmentFlag.AlignCenter)
 
@@ -667,6 +678,8 @@ class SelectMasterStationsDialog(QDialog):
 
 # region Main
 
+MASTER_STATION_PORT = 2404
+
 
 class MainWindow(QMainWindow):
     """Main application window.
@@ -694,9 +707,11 @@ class MainWindow(QMainWindow):
     self.pair_ids: bidict[int, frozenset]
         Key : ID of station.
         Value : Pair of station ids.
+        Direction does not matter.
     self.direction_ids: bidict[int, Direction]
         Key : ID of station.
         Value : Pair of station ids. Source and destination.
+        Direction does matter.
     """
 
     def __init__(self):
@@ -729,8 +744,8 @@ class MainWindow(QMainWindow):
         self.secondary_layout = self.create_secondary_layout()
         secondary_widget.setLayout(self.secondary_layout)
 
-        self.tertiary_scroll_area = QScrollArea()
-        self.tertiary_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.tertiary_scroll_area = QScrollArea(self)
+        # self.tertiary_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self.tertiary_scroll_area.setWidgetResizable(True)
         self.tertiary_scroll_area.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -784,6 +799,7 @@ class MainWindow(QMainWindow):
 
     def update_tertiary_layout(self) -> None:
         assert self.fcn.pair_id in self.df.columns
+        assert all(col in self.df.columns for col in [self.fcn.timestamp, self.fcn.pair_id])
 
         # remove old widgets
         # for i in reversed(range(self.tertiary_layout.count())):
@@ -794,17 +810,39 @@ class MainWindow(QMainWindow):
         #     dsa.plot_pair_flow(self.df, self.fcn, sc.axes, pair_id, self.station_ids, self.direction_ids)
         #     self.tertiary_layout.addWidget(sc)
 
-        w = QWidget()
+        parent_widget = QWidget(parent=self.tertiary_scroll_area)
+        # w = QWidget()
 
-        w.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
-        vbox_layout = QVBoxLayout()
-        for pair_id in self.pair_ids.keys():
-            sc = MplCanvas(self, width=20, height=6, dpi=100)
+        parent_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+
+        vbox_layout = QVBoxLayout(parent_widget)
+
+        master_station_label = InfoLabel("Master station")
+        master_station_label.set_value(self.station_ids[self.master_station_id])
+        vbox_layout.addWidget(master_station_label)
+
+        # compute xlimits of axes
+        datetime_index = pd.DatetimeIndex(self.df[self.fcn.timestamp])
+        left_xlim = min(datetime_index)
+        right_xlim = max(datetime_index)
+
+        for pair_id, pair in self.pair_ids.items():
+            sc = MplCanvas(parent=parent_widget, width=7, height=3.5, dpi=100)
+            sc.axes.set_xlim([left_xlim, right_xlim])
             dsa.plot_pair_flow(self.df, self.fcn, sc.axes, pair_id, self.station_ids, self.direction_ids)
-            vbox_layout.addWidget(sc)
-        w.setLayout(vbox_layout)
 
-        self.tertiary_scroll_area.setWidget(w)
+            l1 = QLabel(f"Stations")
+            x, y = pair
+            l2 = QLabel(str(self.station_ids[x]))
+            l3 = QLabel(str(self.station_ids[y]))
+            vbox_layout.addWidget(l1)
+            vbox_layout.addWidget(l2)
+            vbox_layout.addWidget(l3)
+
+            vbox_layout.addWidget(sc)
+        parent_widget.setLayout(vbox_layout)
+
+        self.tertiary_scroll_area.setWidget(parent_widget)
         self.tertiary_scroll_area.update()
         # self.tertiary_layout.update()
 
@@ -819,19 +857,21 @@ class MainWindow(QMainWindow):
         actions = dict()
 
         # LOAD CSV #
-        actions["Load CSV"] = QAction(icon=QIcon("img/file.png"), text="Load CSV", parent=self)
+        name = "Load CSV"
+        actions[name] = QAction(icon=QIcon("img/file.png"), text=name, parent=self)
         # https://www.iconfinder.com/icons/290138/document_extension_file_format_paper_icon
-        actions["Load CSV"].triggered.connect(self.load_csv)
+        actions[name].triggered.connect(self.load_csv)
 
         # SELECT MASTER STATIONS #
-        actions["Select master stations"] = QAction(icon=QIcon(
-            "img/computa.png"), text="Select master stations", parent=self)
-        actions["Select master stations"].triggered.connect(self.select_master_stations)
+        name = "Select master stations"
+        actions[name] = QAction(icon=QIcon("img/computa.png"), text=name, parent=self)
+        actions[name].triggered.connect(self.select_master_station)
 
         # EXIT #
-        actions["Exit"] = QAction(icon=QIcon("img/exit.png"), text="Exit", parent=self)
+        name = "Exit"
+        actions[name] = QAction(icon=QIcon("img/exit.png"), text=name, parent=self)
         # https://www.iconfinder.com/icons/352328/app_exit_to_icon
-        actions["Exit"].triggered.connect(QApplication.instance().quit)  # TODO je to spravne?
+        actions[name].triggered.connect(QApplication.instance().quit)  # TODO je to spravne?
 
         return actions
 
@@ -912,9 +952,29 @@ class MainWindow(QMainWindow):
         self.direction_ids = dsc.create_direction_ids(self.df, self.fcn)
         dsc.add_direction_id(self.df, self.fcn, self.direction_ids, inplace=True)
 
-    def select_master_stations(self) -> None:
+        self.master_station_id = self.detect_master_staion()
+
+    def detect_master_staion(self) -> int | None:
+        """Try to detect the master station by its port. Return the first found with corresponding port.
+
+        Returns
+        -------
+        int | None
+            ID of master station. None if not found.
+        """
+        for station_id, station in self.station_ids.items():
+            if self.fcn.double_column_station:
+                if station.port == MASTER_STATION_PORT:
+                    return station_id
+            else:
+                if str(MASTER_STATION_PORT) in station.ip:
+                    return station_id
+        else:
+            return None
+
+    def select_master_station(self) -> None:
         if self.df is not None:
-            dlg = SelectMasterStationsDialog(self.station_ids)
+            dlg = SelectMasterStationsDialog(self.station_ids, self.master_station_id)
             if dlg.exec():
                 self.master_station_id = dlg.get_selected_station_id()
                 # TODO trigger event
@@ -926,29 +986,11 @@ class MainWindow(QMainWindow):
             dlg.exec()
 
 
-# class PlotListWidget(QWidget):
-#     def __init__(self, canvas: list[MplCanvas], parent=None):
-#         super().__init__(parent)
-#         self.main_layout = QVBoxLayout()
-#         for canva in canvas:
-#             self.main_layout.addWidget(canva)
-#         self.setLayout(self.main_layout)
-
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     window = MainWindow()
-
-    # window.df = pd.read_pickle("save/a.pkl")
-    # window.df_model = DataFrameModel(window.df)
-    # window.table_view.setModel(window.df_model)
-    # window.update_stats("placeholder")
-
     window.show()
-
-    # wizard = OpenCsvWizard("data/mega104-14-12-18-ioa.csv")
-    # wizard.show()
 
     app.exec()
 

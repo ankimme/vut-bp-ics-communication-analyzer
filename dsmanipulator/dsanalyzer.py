@@ -66,16 +66,19 @@ def plot_pair_flow(
     tmpdf.insert(0, "Sum", 0)
     tmpdf["Sum"] = tmpdf.sum(axis=1)
 
-    axes.set_xlabel("Time")
-    axes.set_ylabel("Packet count")
-    axes.set_title("Packet count in time")
+    # axes.set_xlabel("Time")
+    # axes.set_ylabel("Packet count")
+    # axes.set_title("Packet count in time")
     axes.grid(True)
 
     axes.xaxis.set_major_locator(AutoDateLocator())
     axes.xaxis.set_major_formatter(DateFormatter("%H:%M"))
 
     # plt.xlim([min(tmpdf.index), max(tmpdf.index)])
-    axes.set_xlim([min(tmpdf.index), max(tmpdf.index)])
+    # print(min(k))
+    # print(max(k))
+    # k = pd.DatetimeIndex(df[fcn.timestamp])
+    # axes.set_xlim([min(k), max(k)])
 
     sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=axes)
 
