@@ -7,6 +7,7 @@ Direction = namedtuple("Direction", "src dst")
 
 @dataclass(frozen=True)
 class Station:
+    # TODO dokumentace
     ip: str
     port: int = None
 
