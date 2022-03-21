@@ -19,11 +19,11 @@ def compute_time_span(df: pd.DataFrame, fcn: FileColumnNames):
     return df[fcn.timestamp].iloc[-1] - df[fcn.timestamp].iloc[0]
 
 
-def pairs_count(df: pd.DataFrame, fcn: FileColumnNames):
-    # TODO doc
-    assert fcn.pair_id in df.columns
+# def pairs_count(df: pd.DataFrame, fcn: FileColumnNames):
+#     # TODO doc
+#     assert fcn.pair_id in df.columns
 
-    return df[fcn.pair_id].nunique()
+#     return df[fcn.pair_id].nunique()
 
 
 # endregion

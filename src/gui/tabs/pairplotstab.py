@@ -13,7 +13,7 @@ import pandas as pd
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QWidget, QScrollArea, QVBoxLayout, QSizePolicy, QLabel
-from gui.utils import DataFrameChangedEventData
+from gui.utils import EventData
 from gui.components import InfoLabel
 from dsmanipulator import dsanalyzer as dsa
 from gui.components import MplCanvas
@@ -25,7 +25,9 @@ class PairPlotsTab(QScrollArea):
         self.setWidgetResizable(True)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-    def update_plots(self, data: DataFrameChangedEventData) -> None:
+        self.master_station_label: InfoLabel
+
+    def update_plots(self, data: EventData) -> None:
         assert all(col in data.df.columns for col in [data.fcn.timestamp, data.fcn.pair_id])
 
         parent_widget = QWidget(self)
@@ -34,9 +36,9 @@ class PairPlotsTab(QScrollArea):
 
         vbox_layout = QVBoxLayout(parent_widget)
 
-        master_station_label = InfoLabel("Master station")
-        master_station_label.set_value(data.station_ids[data.master_station_id])
-        vbox_layout.addWidget(master_station_label)
+        self.master_station_label = InfoLabel("Master station")
+        self.master_station_label.set_value(data.station_ids[data.master_station_id])
+        vbox_layout.addWidget(self.master_station_label)
 
         # compute xlimits of axes
         datetime_index = pd.DatetimeIndex(data.df[data.fcn.timestamp])
@@ -61,3 +63,6 @@ class PairPlotsTab(QScrollArea):
 
         self.setWidget(parent_widget)
         self.update()
+
+    def update_master_station(self, data: EventData) -> None:
+        self.master_station_label.set_value(data.station_ids[data.master_station_id])

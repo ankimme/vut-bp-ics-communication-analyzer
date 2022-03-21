@@ -24,12 +24,8 @@ from dsmanipulator.utils import FileColumnNames, Direction, Station
 # TODO doc
 
 
-class EventData(ABC):
-    pass
-
-
 @dataclass(frozen=True)
-class DataFrameChangedEventData(EventData):
+class EventData:
     df: pd.DataFrame
     fcn: FileColumnNames
     file_path: str
@@ -38,6 +34,7 @@ class DataFrameChangedEventData(EventData):
     pair_ids: bidict[int, frozenset]
     direction_ids: bidict[int, Direction]
     master_station_id: int
+    slave_stations: list[int]
 
 
 class EventType(Enum):
@@ -45,7 +42,7 @@ class EventType(Enum):
 
     DATAFRAME_CHANGED = auto()
     MASTER_STATION_CHANGED = auto()
-    SELECTED_PAIRS_CHANGED = auto()
+    SLAVE_STATIONS_CHANGED = auto()
 
 
 class EventHandler:
@@ -53,7 +50,7 @@ class EventHandler:
         self.subscribers: dict[EventType, list[Callable]] = dict()
 
     def subscribe(self, event: EventType, fn: Callable):
-        if not event in self.subscribers:
+        if event not in self.subscribers:
             self.subscribers[event] = []
 
         self.subscribers[event].append(fn)

@@ -9,8 +9,7 @@ Date
 March 2022
 """
 
-from json import tool
-from matplotlib.pyplot import title
+from bidict import bidict
 import pandas as pd
 
 from PyQt6.QtWidgets import QMainWindow, QApplication, QToolBar, QFileDialog, QTabWidget, QMessageBox
@@ -20,8 +19,9 @@ from dsmanipulator import dsloader as dsl
 from dsmanipulator import dscreator as dsc
 from gui.components import OpenCsvWizard
 from gui.tabs import OriginalDfTab, StatsTab, PairPlotsTab
-from gui.utils import EventType, EventHandler, DataFrameChangedEventData
-from gui.components import SelectMasterStationsDialog
+from gui.utils import EventType, EventHandler, EventData
+from gui.components import SelectMasterStationsDialog, SelectSlavesDialog
+from dsmanipulator.utils import Direction, Station
 
 # from .datamodels import DataFrameModel
 
@@ -40,25 +40,26 @@ class MainWindow(QMainWindow):
         Original dataframe loaded from csv.
     event_handler : EventHandler
         A simple event handler for events that should change data in UI.
-
-    df_model : DataFrameModel
-        Model of original data.
-    stat_widgets : dict[str, InfoLabel]
-        Key : Statistic name.
-        Value : Assigned label.
+    self.original_cols : list[str]
+        Columns that where part of the original csv file.
+    self.file_path : str
+        File path of the csv file.
     self.master_station_id : int
         ID of station that should be treated as master.
-    self.station_ids: bidict[int, Station]
+    self.slave_stations : list[int]
+        IDs of stations that should be treated as slaves.
+    self.station_ids : bidict[int, Station]
         Key : ID of station.
         Value : Station.
-    self.pair_ids: bidict[int, frozenset]
+    self.pair_ids : bidict[int, frozenset]
         Key : ID of station.
         Value : Pair of station ids.
         Direction does not matter.
-    self.direction_ids: bidict[int, Direction]
+    self.direction_ids : bidict[int, Direction]
         Key : ID of station.
         Value : Pair of station ids. Source and destination.
         Direction does matter.
+
     """
 
     def __init__(self):
@@ -69,7 +70,13 @@ class MainWindow(QMainWindow):
         self.actions = self.create_actions()
         self.df: pd.DataFrame = None
         self.event_handler = EventHandler()
+        self.original_cols: list[str]
+        self.file_path: str
         self.master_station_id: int
+        self.slave_stations: list[int] = None
+        self.station_ids: bidict[int, Station]
+        self.pair_ids: bidict[int, frozenset]
+        self.direction_ids: bidict[int, Direction]
 
         toolbar = self.create_toolbar()
         self.addToolBar(toolbar)
@@ -78,9 +85,6 @@ class MainWindow(QMainWindow):
         # self.stat_widgets: dict[str, InfoLabel] = {}
         # self.fcn: FileColumnNames
         # self.master_station_id: int
-        # self.station_ids: bidict[int, Station]
-        # self.pair_ids: bidict[int, frozenset]
-        # self.direction_ids: bidict[int, Direction]
 
         # self.init_toolbar()
 
@@ -95,72 +99,98 @@ class MainWindow(QMainWindow):
 
         stats_tab = StatsTab(self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, stats_tab.update_stats)
+        self.event_handler.subscribe(EventType.MASTER_STATION_CHANGED, stats_tab.update_master_station)
         tabs.addTab(stats_tab, "General statistics")
 
         # TAB 3 #
 
         pair_plots_tab = PairPlotsTab(self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, pair_plots_tab.update_plots)
+        self.event_handler.subscribe(EventType.MASTER_STATION_CHANGED, pair_plots_tab.update_master_station)
+
         tabs.addTab(pair_plots_tab, "Communication pairs")
 
         self.setCentralWidget(tabs)
 
+        self.event_handler.subscribe(EventType.SLAVE_STATIONS_CHANGED, lambda data: print(data.slave_stations))
+
+    # region Actions
+
     def load_csv(self) -> None:
         # TODO delete test
 
-        if False:
-            self.df = pd.read_pickle("save/df.pkl")
-            self.df_model = DataFrameModel(self.df)
-            self.table_view.setModel(self.df_model)
+        if True:
+            self.file_path = "placeholder.py"
             import pickle
 
-            with open("save/fcn.pkl", "rb") as f:
+            with open("../save/fcn.pkl", "rb") as f:
                 self.fcn = pickle.load(f)
+            self.df = pd.read_pickle("../save/df.pkl")
+            self.original_cols = self.df.columns
 
             self.prepare_df()
-            self.update_secondary_layout("placeholder")
-            self.update_tertiary_layout()
 
-            self.df.to_pickle("save/dfb.pkl")
+            data = self.get_event_data()
+            self.event_handler.notify(EventType.DATAFRAME_CHANGED, data)
+
             return
 
         file_path, _ = QFileDialog.getOpenFileName(parent=self, caption="Open file", filter="CSV files (*.csv *.txt)")
 
         if file_path:
+            self.file_path = file_path
             dialog = OpenCsvWizard(file_path)
             if dialog.exec():
                 # TODO exception
                 dialect, dtype, self.fcn = dialog.get_csv_settings()
                 self.df = dsl.load_data(file_path, dtype, dialect)
-                original_cols = self.df.columns
+                self.df.to_pickle("../save/df.pkl")  # TODO delete
+                self.original_cols = self.df.columns
 
                 self.prepare_df()
 
-                data = DataFrameChangedEventData(
-                    self.df,
-                    self.fcn,
-                    file_path,
-                    original_cols,
-                    self.station_ids,
-                    self.pair_ids,
-                    self.direction_ids,
-                    self.master_station_id,
-                )
+                data = self.get_event_data()
                 self.event_handler.notify(EventType.DATAFRAME_CHANGED, data)
-                # TODO trigger event
-                # self.df_model = DataFrameModel(self.df)
-                # self.table_view.setModel(self.df_model)
-
-                # import pickle
 
                 # # TODO delete
-                # self.df.to_pickle("save/df.pkl")
-                # with open("save/fcn.pkl", "wb") as f:
-                #     pickle.dump(self.fcn, f)
+                import pickle
 
-                # self.prepare_df()
-                # self.update_secondary_layout(file_path)
-                # self.update_tertiary_layout()
+                with open("../save/fcn.pkl", "wb") as f:
+                    pickle.dump(self.fcn, f)
+
+    def select_master_station(self) -> None:
+        if self.df is not None:
+            dlg = SelectMasterStationsDialog(self.station_ids, self.master_station_id, parent=self)
+            if dlg.exec():
+                self.master_station_id = dlg.get_master_station_id()
+
+                data = self.get_event_data()
+                self.event_handler.notify(EventType.MASTER_STATION_CHANGED, data)
+        else:
+            dlg = QMessageBox(self)
+            dlg.setWindowTitle("Warning")
+            dlg.setText("Pleas load a CSV file before proceeding")
+            dlg.setIcon(QMessageBox.Icon.Warning)
+            dlg.exec()
+
+    def select_slaves(self) -> None:
+        if self.df is not None:
+            dlg = SelectSlavesDialog(self.master_station_id, self.station_ids, self.pair_ids, parent=self)
+            if dlg.exec():
+                self.slave_stations = dlg.get_slave_stations_ids()
+
+                data = self.get_event_data()
+                self.event_handler.notify(EventType.SLAVE_STATIONS_CHANGED, data)
+        else:
+            dlg = QMessageBox(self)
+            dlg.setWindowTitle("Warning")
+            dlg.setText("Pleas load a CSV file before proceeding")
+            dlg.setIcon(QMessageBox.Icon.Warning)
+            dlg.exec()
+
+    # endregion
+
+    # region Utilities
 
     def prepare_df(self) -> None:
         dsc.add_relative_days(self.df, self.fcn, inplace=True)
@@ -194,18 +224,22 @@ class MainWindow(QMainWindow):
         else:
             return None
 
-    def select_master_station(self) -> None:
-        if self.df is not None:
-            dlg = SelectMasterStationsDialog(self.station_ids, self.master_station_id)
-            if dlg.exec():
-                self.master_station_id = dlg.get_selected_station_id()
-                # TODO trigger event
-        else:
-            dlg = QMessageBox(self)
-            dlg.setWindowTitle("Warning")
-            dlg.setText("Pleas load a CSV file before proceeding")
-            dlg.setIcon(QMessageBox.Icon.Warning)
-            dlg.exec()
+    def get_event_data(self) -> EventData:
+        # TODO dokumentace
+        data = EventData(
+            self.df,
+            self.fcn,
+            self.file_path,
+            self.original_cols,
+            self.station_ids,
+            self.pair_ids,
+            self.direction_ids,
+            self.master_station_id,
+            self.slave_stations,
+        )
+        return data
+
+    # endregion
 
     # region Toolbar
 
@@ -251,10 +285,15 @@ class MainWindow(QMainWindow):
         # https://www.iconfinder.com/icons/290138/document_extension_file_format_paper_icon
         actions[name].triggered.connect(self.load_csv)
 
-        # SELECT MASTER STATIONS #
-        name = "Select master stations"
+        # SELECT MASTER STATION #
+        name = "Select master station"
         actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
         actions[name].triggered.connect(self.select_master_station)
+
+        # SELECT PAIRS #
+        name = "Select pairs"
+        actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
+        actions[name].triggered.connect(self.select_slaves)
 
         # EXIT #
         name = "Exit"

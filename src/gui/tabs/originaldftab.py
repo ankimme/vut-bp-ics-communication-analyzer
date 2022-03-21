@@ -13,7 +13,7 @@ import pandas as pd
 
 from PyQt6.QtWidgets import QWidget, QTableView
 
-from gui.utils import DataFrameModel, DataFrameChangedEventData
+from gui.utils import DataFrameModel, EventData
 
 
 class OriginalDfTab(QTableView):
@@ -27,7 +27,7 @@ class OriginalDfTab(QTableView):
         self.setAlternatingRowColors(True)
         self.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
 
-    def update_model(self, data: DataFrameChangedEventData) -> None:
+    def update_model(self, data: EventData) -> None:
         tmpdf = data.df.loc[:, data.original_cols]
         self.df_model = DataFrameModel(tmpdf)
         self.setModel(self.df_model)
