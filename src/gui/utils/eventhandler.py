@@ -34,7 +34,7 @@ class EventData:
     pair_ids: bidict[int, frozenset]
     direction_ids: bidict[int, Direction]
     master_station_id: int
-    slave_stations: list[int]
+    slave_station_ids: list[int]
 
 
 class EventType(Enum):

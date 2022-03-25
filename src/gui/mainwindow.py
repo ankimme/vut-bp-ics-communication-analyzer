@@ -18,7 +18,7 @@ from PyQt6.QtGui import QIcon, QAction
 from dsmanipulator import dsloader as dsl
 from dsmanipulator import dscreator as dsc
 from gui.components import OpenCsvWizard
-from gui.tabs import OriginalDfTab, StatsTab, PairPlotsTab
+from gui.tabs import OriginalDfTab, StatsTab, PairPlotsTab, SlavePlotsTab
 from gui.utils import EventType, EventHandler, EventData
 from gui.components import SelectMasterStationsDialog, SelectSlavesDialog
 from dsmanipulator.utils import Direction, Station
@@ -46,7 +46,7 @@ class MainWindow(QMainWindow):
         File path of the csv file.
     self.master_station_id : int
         ID of station that should be treated as master.
-    self.slave_stations : list[int]
+    self.slave_station_ids : list[int]
         IDs of stations that should be treated as slaves.
     self.station_ids : bidict[int, Station]
         Key : ID of station.
@@ -73,7 +73,7 @@ class MainWindow(QMainWindow):
         self.original_cols: list[str]
         self.file_path: str
         self.master_station_id: int
-        self.slave_stations: list[int] = None
+        self.slave_station_ids: list[int] = []
         self.station_ids: bidict[int, Station]
         self.pair_ids: bidict[int, frozenset]
         self.direction_ids: bidict[int, Direction]
@@ -107,12 +107,16 @@ class MainWindow(QMainWindow):
         pair_plots_tab = PairPlotsTab(self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, pair_plots_tab.update_plots)
         self.event_handler.subscribe(EventType.MASTER_STATION_CHANGED, pair_plots_tab.update_master_station)
-
         tabs.addTab(pair_plots_tab, "Communication pairs")
 
-        self.setCentralWidget(tabs)
+        # TAB 4 #
+        slave_plots_tab = SlavePlotsTab(self)
+        self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, slave_plots_tab.update_plots)
+        self.event_handler.subscribe(EventType.MASTER_STATION_CHANGED, slave_plots_tab.update_master_station)
+        self.event_handler.subscribe(EventType.SLAVE_STATIONS_CHANGED, slave_plots_tab.update_plots)
+        tabs.addTab(slave_plots_tab, "Slave communication")
 
-        self.event_handler.subscribe(EventType.SLAVE_STATIONS_CHANGED, lambda data: print(data.slave_stations))
+        self.setCentralWidget(tabs)
 
     # region Actions
 
@@ -175,9 +179,9 @@ class MainWindow(QMainWindow):
 
     def select_slaves(self) -> None:
         if self.df is not None:
-            dlg = SelectSlavesDialog(self.master_station_id, self.station_ids, self.pair_ids, parent=self)
+            dlg = SelectSlavesDialog(self.master_station_id, self.slave_station_ids, self.station_ids, self.pair_ids, parent=self)
             if dlg.exec():
-                self.slave_stations = dlg.get_slave_stations_ids()
+                self.slave_station_ids = dlg.get_slave_stations_ids()
 
                 data = self.get_event_data()
                 self.event_handler.notify(EventType.SLAVE_STATIONS_CHANGED, data)
@@ -235,7 +239,7 @@ class MainWindow(QMainWindow):
             self.pair_ids,
             self.direction_ids,
             self.master_station_id,
-            self.slave_stations,
+            self.slave_station_ids,
         )
         return data
 

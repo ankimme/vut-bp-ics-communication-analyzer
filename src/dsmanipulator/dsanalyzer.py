@@ -45,7 +45,7 @@ def plot_pair_flow(
     expanded_cols: list[str] = list(filter(lambda x: fcn.direction_id in x, tmpdf.columns))
 
     # filter only timestamp and expanded columns
-    tmpdf = tmpdf[expanded_cols + [fcn.timestamp]]
+    tmpdf = tmpdf[[fcn.timestamp] + expanded_cols]
 
     # rename expanded cols so that the legend shows relevant information
     renamed_cols: dict[str, str] = {}
@@ -87,6 +87,27 @@ def plot_pair_flow(
 
     # plt.xlim([min(x), max(x)])
     # plt.ylim([0, max(y)])
+
+
+def plot_slaves(df: pd.DataFrame, fcn: FileColumnNames, axes: Axes, station_ids: bidict[int, Station], direction_ids: bidict[int, Direction]) -> None:
+
+    tmpdf = dsc.expand_values_to_columns(df, fcn.pair_id, drop_column=True)
+
+    # names of expanded columns
+    expanded_cols: list[str] = list(filter(lambda x: fcn.pair_id in x, tmpdf.columns))
+
+    # filter only timestamp and expanded columns
+    tmpdf = tmpdf[[fcn.timestamp] + expanded_cols]
+
+    tmpdf = dsc.convert_to_timeseries(tmpdf, fcn)
+    tmpdf = tmpdf.resample("5min").sum()
+
+    axes.xaxis.set_major_locator(AutoDateLocator())
+    axes.xaxis.set_major_formatter(DateFormatter("%H:%M"))
+
+    axes.legend([], [], frameon=False)
+
+    sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=axes, legend=None)
 
 
 # endregion

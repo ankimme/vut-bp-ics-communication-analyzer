@@ -1,3 +1,5 @@
+# TODO doc
+
 import os
 from PyQt6.QtWidgets import QWidget, QVBoxLayout
 
@@ -37,7 +39,6 @@ class StatsTab(QWidget):
         self.stat_widgets["Row count"].set_value(len(data.df.index))
         self.stat_widgets["Column count"].set_value(len(data.df.columns))
         self.stat_widgets["Time span"].set_value(dsa.compute_time_span(data.df, data.fcn))
-        # self.stat_widgets["Pairs count"].set_value(dsa.pairs_count(data.df, data.fcn)) TODO delete
         self.stat_widgets["Pairs count"].set_value(len(data.pair_ids))
         self.stat_widgets["Master station"].set_value(str(data.station_ids[data.master_station_id]))
 

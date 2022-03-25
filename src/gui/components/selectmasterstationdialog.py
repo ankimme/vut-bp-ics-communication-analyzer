@@ -10,7 +10,7 @@ from dsmanipulator.utils import Station
 class SelectMasterStationsDialog(QDialog):
     """A simple dialog used for selecting the master station."""
 
-    def __init__(self, station_ids: bidict[int, Station], master_station_id: int = None, parent: QWidget = None):
+    def __init__(self, station_ids: bidict[int, Station], og_master_station_id: int = None, parent: QWidget = None):
         """Initialize the dialog window.
 
         Parameters
@@ -31,7 +31,7 @@ class SelectMasterStationsDialog(QDialog):
 
         for station_id, station in station_ids.items():
             button = QRadioButton(str(station))
-            if station_id == master_station_id:
+            if station_id == og_master_station_id:
                 button.setChecked(True)
             self.button_group.addButton(button, id=station_id)
             self.layout.addWidget(button, Qt.AlignmentFlag.AlignCenter)

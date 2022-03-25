@@ -6,7 +6,15 @@ from dsmanipulator.utils import Station
 
 
 class SelectSlavesDialog(QDialog):
-    def __init__(self, master_station_id: int, station_ids: bidict[int, Station], pair_ids: bidict[int, frozenset], parent: QWidget = None) -> None:
+    def __init__(
+        self,
+        master_station_id: int,
+        og_slave_station_ids: list[int],
+        station_ids: bidict[int, Station],
+        pair_ids: bidict[int, frozenset],
+        parent: QWidget = None,
+    ) -> None:
+        # TODO doc og_slave_station_ids -> already selected
         super().__init__(parent)
 
         self.setWindowTitle("Select slaves")
@@ -27,6 +35,10 @@ class SelectSlavesDialog(QDialog):
         for station_id, station in station_ids.items():
             if station_id in slave_ids:
                 box = QCheckBox(str(station), self)
+
+                if station_id in og_slave_station_ids:
+                    box.setChecked(True)
+
                 self.boxes[station_id] = box
                 self.layout.addWidget(box)
 

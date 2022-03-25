@@ -13,9 +13,11 @@ import pandas as pd
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QWidget, QScrollArea, QVBoxLayout, QSizePolicy, QLabel
+
+from dsmanipulator import dsanalyzer as dsa
+
 from gui.utils import EventData
 from gui.components import InfoLabel
-from dsmanipulator import dsanalyzer as dsa
 from gui.components import MplCanvas
 
 

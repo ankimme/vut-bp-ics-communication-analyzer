@@ -57,6 +57,16 @@ TRIBUTE ICONS
 https://p.yusukekamiyamane.com/
 
 
-stejny scale na tertiary 
-predzvyraznit 2404
 dat vyber komunikace s kadym zvlast a nebo vsema slavama dohromady
+
+
+zkoumani podle casovych oken 
+rozdelit na petiminutove okna / nejlepe dynamicky
+pocet paketů, prumerne hodnoty (+)
+
+olbou i atributu a casbych oken
+zobrazeni diskretni tabulky i s histogramem jednotlivych trid
+graf na zaklade casovych oken ktery zobrazuje napr prumer -> hledame stabilni hodnoty
+rozvrhnout strukturu
+
+statistiky 
