@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 from matplotlib.dates import DateFormatter, AutoDateLocator
 from matplotlib.axes import Axes
 import pandas as pd
@@ -8,22 +7,93 @@ from . import dscreator as dsc
 from .utils.dataobjects import Direction, FileColumnNames, Station
 
 from bidict import bidict
-from dsmanipulator.utils.dataobjects import CommunicationPair
 
 # region Stats
 
 
-def compute_time_span(df: pd.DataFrame, fcn: FileColumnNames):
+def get_df_time_span(df: pd.DataFrame, fcn: FileColumnNames) -> pd.Timedelta:
+    """Get timespan of whole dataframe. From start to end.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+    fcn : FileColumnNames
+        Real names of predefined columns.
+
+    Returns
+    -------
+    pd.Timedelta
+        Timespan of data in dataframe.
+    """
     assert fcn.timestamp in df.columns
 
     return df[fcn.timestamp].iloc[-1] - df[fcn.timestamp].iloc[0]
 
 
-# def pairs_count(df: pd.DataFrame, fcn: FileColumnNames):
-#     # TODO doc
-#     assert fcn.pair_id in df.columns
+# endregion
 
-#     return df[fcn.pair_id].nunique()
+
+# region Dataframe Insights
+
+
+def detect_master_staion(
+    station_ids: bidict[int, Station], double_column_station: bool, port: int = 2404
+) -> int | None:
+    """Try to detect the master station by its port. Return the first found with corresponding port.
+
+    Parameters
+    ----------
+    station_ids : bidict[int, Station]
+        Key : ID of station.
+        Value : Station.
+    double_column_station : bool
+        Whether station is described by two columns i.e. ip + port.
+
+    Returns
+    -------
+    int | None
+        ID of master station. None if not found.
+    """
+    pass
+
+    for station_id, station in station_ids.items():
+        if double_column_station:
+            if station.port == port:
+                return station_id
+        else:
+            if str(port) in station.ip:
+                return station_id
+    else:
+        return None
+
+
+# ids of stations that communicate with the master station
+def get_connected_stations(pair_ids: bidict[int, frozenset], station_id: int) -> list[int]:
+    """Get ids of stations that are communicating with given station.
+
+    Parameters
+    ----------
+    pair_ids : bidict[int, frozenset]
+        Key : ID of station.
+        Value : Pair of station ids.
+    station_id : int
+        ID of station of interest.
+
+    Returns
+    -------
+    list[int]
+        Stations communicating with station of interest.
+    """
+    connected_ids = set()
+    for pair in pair_ids.values():
+        if station_id in pair:
+            x, y = pair
+            connected_ids.add(x)
+            connected_ids.add(y)
+    connected_ids.discard(station_id)
+
+    return list(connected_ids)
 
 
 # endregion
@@ -33,8 +103,14 @@ def compute_time_span(df: pd.DataFrame, fcn: FileColumnNames):
 
 
 def plot_pair_flow(
-    df: pd.DataFrame, fcn: FileColumnNames, axes: Axes, pair_id: int, station_ids: bidict[int, Station], direction_ids: bidict[int, Direction]
+    df: pd.DataFrame,
+    fcn: FileColumnNames,
+    axes: Axes,
+    pair_id: int,
+    station_ids: bidict[int, Station],
+    direction_ids: bidict[int, Direction],
 ) -> None:
+    #     # TODO doc
     assert all(col in df.columns for col in [fcn.timestamp, fcn.pair_id, fcn.direction_id])
 
     # filter original dataframe and expand values
@@ -89,7 +165,14 @@ def plot_pair_flow(
     # plt.ylim([0, max(y)])
 
 
-def plot_slaves(df: pd.DataFrame, fcn: FileColumnNames, axes: Axes, station_ids: bidict[int, Station], direction_ids: bidict[int, Direction]) -> None:
+def plot_slaves(
+    df: pd.DataFrame,
+    fcn: FileColumnNames,
+    axes: Axes,
+    station_ids: bidict[int, Station],
+    direction_ids: bidict[int, Direction],
+) -> None:
+    #     # TODO doc
 
     tmpdf = dsc.expand_values_to_columns(df, fcn.pair_id, drop_column=True)
 

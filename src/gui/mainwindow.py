@@ -17,16 +17,13 @@ from PyQt6.QtGui import QIcon, QAction
 
 from dsmanipulator import dsloader as dsl
 from dsmanipulator import dscreator as dsc
+from dsmanipulator import dsanalyzer as dsa
+
 from gui.components import OpenCsvWizard
-from gui.tabs import OriginalDfTab, StatsTab, PairPlotsTab, SlavePlotsTab
+from gui.tabs import OriginalDfTab, StatsTab, PairPlotsTab, SlavesPlotTab
 from gui.utils import EventType, EventHandler, EventData
 from gui.components import SelectMasterStationsDialog, SelectSlavesDialog
-from dsmanipulator.utils import Direction, Station
-
-# from .datamodels import DataFrameModel
-
-
-MASTER_STATION_PORT = 2404
+from dsmanipulator.utils import Direction, Station, FileColumnNames
 
 
 class MainWindow(QMainWindow):
@@ -38,37 +35,39 @@ class MainWindow(QMainWindow):
         Actions used in menu and toolbar.
     df : pd.DataFrame
         Original dataframe loaded from csv.
+    fcn : FileColumnNames
+        Real names of predefined columns.
     event_handler : EventHandler
         A simple event handler for events that should change data in UI.
-    self.original_cols : list[str]
+    original_cols : list[str]
         Columns that where part of the original csv file.
-    self.file_path : str
+    file_path : str
         File path of the csv file.
-    self.master_station_id : int
+    master_station_id : int
         ID of station that should be treated as master.
-    self.slave_station_ids : list[int]
+    slave_station_ids : list[int]
         IDs of stations that should be treated as slaves.
-    self.station_ids : bidict[int, Station]
+    station_ids : bidict[int, Station]
         Key : ID of station.
         Value : Station.
-    self.pair_ids : bidict[int, frozenset]
+    pair_ids : bidict[int, frozenset]
         Key : ID of station.
         Value : Pair of station ids.
         Direction does not matter.
-    self.direction_ids : bidict[int, Direction]
+    direction_ids : bidict[int, Direction]
         Key : ID of station.
         Value : Pair of station ids. Source and destination.
         Direction does matter.
-
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("ICS Analyzer")
         self.setMinimumSize(800, 500)
 
         self.actions = self.create_actions()
         self.df: pd.DataFrame = None
+        self.fcn: FileColumnNames
         self.event_handler = EventHandler()
         self.original_cols: list[str]
         self.file_path: str
@@ -80,13 +79,6 @@ class MainWindow(QMainWindow):
 
         toolbar = self.create_toolbar()
         self.addToolBar(toolbar)
-
-        # self.df_model: DataFrameModel
-        # self.stat_widgets: dict[str, InfoLabel] = {}
-        # self.fcn: FileColumnNames
-        # self.master_station_id: int
-
-        # self.init_toolbar()
 
         tabs = QTabWidget()
 
@@ -110,7 +102,7 @@ class MainWindow(QMainWindow):
         tabs.addTab(pair_plots_tab, "Communication pairs")
 
         # TAB 4 #
-        slave_plots_tab = SlavePlotsTab(self)
+        slave_plots_tab = SlavesPlotTab(self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, slave_plots_tab.update_plots)
         self.event_handler.subscribe(EventType.MASTER_STATION_CHANGED, slave_plots_tab.update_master_station)
         self.event_handler.subscribe(EventType.SLAVE_STATIONS_CHANGED, slave_plots_tab.update_plots)
@@ -121,8 +113,12 @@ class MainWindow(QMainWindow):
     # region Actions
 
     def load_csv(self) -> None:
-        # TODO delete test
+        """Open dialog for loading data from a CSV file.
 
+        If a file is loaded, preprocess the dataframe, update self attributes and notify observers.
+        """
+
+        # TODO delete test
         if True:
             self.file_path = "placeholder.py"
             import pickle
@@ -132,7 +128,7 @@ class MainWindow(QMainWindow):
             self.df = pd.read_pickle("../save/df.pkl")
             self.original_cols = self.df.columns
 
-            self.prepare_df()
+            self.preprocess_df()
 
             data = self.get_event_data()
             self.event_handler.notify(EventType.DATAFRAME_CHANGED, data)
@@ -151,7 +147,7 @@ class MainWindow(QMainWindow):
                 self.df.to_pickle("../save/df.pkl")  # TODO delete
                 self.original_cols = self.df.columns
 
-                self.prepare_df()
+                self.preprocess_df()
 
                 data = self.get_event_data()
                 self.event_handler.notify(EventType.DATAFRAME_CHANGED, data)
@@ -163,6 +159,10 @@ class MainWindow(QMainWindow):
                     pickle.dump(self.fcn, f)
 
     def select_master_station(self) -> None:
+        """Open dialog for master station selection.
+
+        If a new master station is selected, update the self.master_station_id and notify observers about the change.
+        """
         if self.df is not None:
             dlg = SelectMasterStationsDialog(self.station_ids, self.master_station_id, parent=self)
             if dlg.exec():
@@ -178,8 +178,14 @@ class MainWindow(QMainWindow):
             dlg.exec()
 
     def select_slaves(self) -> None:
+        """Open dialog for slave stations selection.
+
+        If new slave stations are selected, update the self.slave_station_ids and notify observers about the change.
+        """
         if self.df is not None:
-            dlg = SelectSlavesDialog(self.master_station_id, self.slave_station_ids, self.station_ids, self.pair_ids, parent=self)
+            dlg = SelectSlavesDialog(
+                self.master_station_id, self.slave_station_ids, self.station_ids, self.pair_ids, parent=self
+            )
             if dlg.exec():
                 self.slave_station_ids = dlg.get_slave_stations_ids()
 
@@ -196,7 +202,11 @@ class MainWindow(QMainWindow):
 
     # region Utilities
 
-    def prepare_df(self) -> None:
+    def preprocess_df(self) -> None:
+        """Prepare the dataframe for further use in the app.
+
+        Also create or update attributes used in the rest of the code of the app.
+        """
         dsc.add_relative_days(self.df, self.fcn, inplace=True)
 
         self.station_ids = dsc.create_station_ids(self.df, self.fcn)
@@ -208,28 +218,35 @@ class MainWindow(QMainWindow):
         self.direction_ids = dsc.create_direction_ids(self.df, self.fcn)
         dsc.add_direction_id(self.df, self.fcn, self.direction_ids, inplace=True)
 
-        self.master_station_id = self.detect_master_staion()
+        self.master_station_id = dsa.detect_master_staion(self.station_ids, self.fcn.double_column_station)
+        self.slave_station_ids = dsa.get_connected_stations(self.pair_ids, self.master_station_id)
 
-    def detect_master_staion(self) -> int | None:
-        """Try to detect the master station by its port. Return the first found with corresponding port.
+    # def detect_master_staion(self) -> int | None:
+    #     """Try to detect the master station by its port. Return the first found with corresponding port.
+
+    #     Returns
+    #     -------
+    #     int | None
+    #         ID of master station. None if not found.
+    #     """
+    #     for station_id, station in self.station_ids.items():
+    #         if self.fcn.double_column_station:
+    #             if station.port == MASTER_STATION_PORT:
+    #                 return station_id
+    #         else:
+    #             if str(MASTER_STATION_PORT) in station.ip:
+    #                 return station_id
+    #     else:
+    #         return None
+
+    def get_event_data(self) -> EventData:
+        """Prepare event data.
 
         Returns
         -------
-        int | None
-            ID of master station. None if not found.
+        EventData
+            Data used by events.
         """
-        for station_id, station in self.station_ids.items():
-            if self.fcn.double_column_station:
-                if station.port == MASTER_STATION_PORT:
-                    return station_id
-            else:
-                if str(MASTER_STATION_PORT) in station.ip:
-                    return station_id
-        else:
-            return None
-
-    def get_event_data(self) -> EventData:
-        # TODO dokumentace
         data = EventData(
             self.df,
             self.fcn,

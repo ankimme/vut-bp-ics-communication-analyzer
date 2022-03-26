@@ -10,7 +10,7 @@ from dsmanipulator import dsanalyzer as dsa
 from gui.components import MplCanvas
 
 
-class SlavePlotsTab(QScrollArea):
+class SlavesPlotTab(QScrollArea):
     def __init__(self, parent: QWidget) -> None:
         super().__init__(parent)
         self.setWidgetResizable(True)

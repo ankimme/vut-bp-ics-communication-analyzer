@@ -30,6 +30,7 @@ class PairPlotsTab(QScrollArea):
         self.master_station_label: InfoLabel
 
     def update_plots(self, data: EventData) -> None:
+        # TODO rearrange to init
         assert all(col in data.df.columns for col in [data.fcn.timestamp, data.fcn.pair_id])
 
         parent_widget = QWidget(self)
