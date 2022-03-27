@@ -20,9 +20,9 @@ from dsmanipulator import dscreator as dsc
 from dsmanipulator import dsanalyzer as dsa
 
 from gui.components import OpenCsvWizard
-from gui.tabs import OriginalDfTab, StatsTab, PairPlotsTab, SlavesPlotTab
+from gui.tabs import OriginalDfTab, StatsTab, PairPlotsTab, SlavesPlotTab, TimeFrameViewTab
 from gui.utils import EventType, EventHandler, EventData
-from gui.components import SelectMasterStationsDialog, SelectSlavesDialog, ChangeResampleRate
+from gui.components import SelectMasterStationsDialog, SelectSlavesDialog, ChangeResampleRate, SelectAttributeDialog
 from dsmanipulator.utils import Direction, Station, FileColumnNames
 
 
@@ -43,6 +43,8 @@ class MainWindow(QMainWindow):
         Timespan used for data analysis.
     original_cols : list[str]
         Columns that where part of the original csv file.
+    attribute_name : str
+        Attribute of interest used in analysis.
     file_path : str
         File path of the csv file.
     master_station_id : int
@@ -73,6 +75,7 @@ class MainWindow(QMainWindow):
         self.event_handler = EventHandler()
         self.resample_rate: pd.Timedelta = pd.Timedelta(minutes=5)
         self.original_cols: list[str]
+        self.attribute_name: str = None
         self.file_path: str
         self.master_station_id: int
         self.slave_station_ids: list[int] = []
@@ -106,11 +109,16 @@ class MainWindow(QMainWindow):
         tabs.addTab(pair_plots_tab, "Communication pairs")
 
         # TAB 4 #
-        slave_plots_tab = SlavesPlotTab(self.actions["Select master station"], self)
+        slave_plots_tab = SlavesPlotTab(self.actions["Select master station"], self)  # TODO delete first param
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, slave_plots_tab.update_plots)
         self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, slave_plots_tab.update_plots)
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, slave_plots_tab.update_plots)
         tabs.addTab(slave_plots_tab, "Slave communication")
+
+        # TAB 5 #
+        time_frame_view_tab = TimeFrameViewTab(self)
+        self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, time_frame_view_tab.update_model)
+        tabs.addTab(time_frame_view_tab, "Time frame view")
 
         self.setCentralWidget(tabs)
 
@@ -206,12 +214,29 @@ class MainWindow(QMainWindow):
     def change_resample_rate(self) -> None:
 
         if self.df is not None:
-            dlg = ChangeResampleRate(self.resample_rate)
+            dlg = ChangeResampleRate(self.resample_rate, parent=self)
             if dlg.exec():
                 self.resample_rate = dlg.get_resample_rate()
 
                 data = self.get_event_data()
                 self.event_handler.notify(EventType.RESAMPLE_RATE_CHANGED, data)
+        else:
+            dlg = QMessageBox(self)
+            dlg.setWindowTitle("Warning")
+            dlg.setText("Please load a CSV file before proceeding")
+            dlg.setIcon(QMessageBox.Icon.Warning)
+            dlg.exec()
+
+    def change_attribute_name(self) -> None:
+
+        if self.df is not None:
+            filtered_attributes = list(set(self.original_cols) - set(self.fcn.predefined_cols))
+            dlg = SelectAttributeDialog(self.attribute_name, filtered_attributes, parent=self)
+            if dlg.exec():
+                self.attribute_name = dlg.get_attribute_name()
+
+                data = self.get_event_data()
+                self.event_handler.notify(EventType.ATTRIBUTE_CHANGED, data)
         else:
             dlg = QMessageBox(self)
             dlg.setWindowTitle("Warning")
@@ -274,6 +299,7 @@ class MainWindow(QMainWindow):
             self.file_path,
             self.resample_rate,
             self.original_cols,
+            self.attribute_name,
             self.station_ids,
             self.pair_ids,
             self.direction_ids,
@@ -342,6 +368,11 @@ class MainWindow(QMainWindow):
         name = "Change resample rate"
         actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
         actions[name].triggered.connect(self.change_resample_rate)
+
+        # CHANGE ATTRIBUTE OF INTEREST #
+        name = "Change attribute"
+        actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
+        actions[name].triggered.connect(self.change_attribute_name)
 
         # EXIT #
         name = "Exit"

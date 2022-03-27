@@ -30,6 +30,7 @@ class EventData:
     file_path: str
     resample_rate: pd.Timedelta
     original_cols: list[str]
+    attribute_name: str
     station_ids: bidict[int, Station]
     pair_ids: bidict[int, frozenset]
     direction_ids: bidict[int, Direction]
@@ -43,6 +44,7 @@ class EventType(Enum):
     DATAFRAME_CHANGED = auto()
     MASTER_SLAVES_CHANGED = auto()
     RESAMPLE_RATE_CHANGED = auto()
+    ATTRIBUTE_CHANGED = auto()
 
 
 class EventHandler:

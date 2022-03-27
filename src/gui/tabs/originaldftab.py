@@ -9,7 +9,7 @@ Date
 March 2022
 """
 
-import pandas as pd
+
 
 from PyQt6.QtWidgets import QWidget, QTableView
 
@@ -31,3 +31,4 @@ class OriginalDfTab(QTableView):
         tmpdf = data.df.loc[:, data.original_cols]
         self.df_model = DataFrameModel(tmpdf)
         self.setModel(self.df_model)
+        self.update()

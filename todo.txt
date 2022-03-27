@@ -70,3 +70,6 @@ graf na zaklade casovych oken ktery zobrazuje napr prumer -> hledame stabilni ho
 rozvrhnout strukturu
 
 statistiky 
+
+
+read objects as strings

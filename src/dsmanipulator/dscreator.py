@@ -180,7 +180,9 @@ def create_direction_ids(df: pd.DataFrame, fcn: FileColumnNames) -> bidict[int, 
 # region Custom column creators
 
 
-def add_station_id(df: pd.DataFrame, fcn: FileColumnNames, station_ids: bidict[int, Station], inplace: bool = False) -> pd.DataFrame:
+def add_station_id(
+    df: pd.DataFrame, fcn: FileColumnNames, station_ids: bidict[int, Station], inplace: bool = False
+) -> pd.DataFrame:
     """Add src and dst station id columns to dataframe.
 
     Parameters
@@ -209,6 +211,7 @@ def add_station_id(df: pd.DataFrame, fcn: FileColumnNames, station_ids: bidict[i
 
     def get_station_id(ip, port=None):
         return station_ids.inv[Station(ip, port)]
+
     get_station_id_vectorized = np.vectorize(get_station_id)
 
     srcIPs = df[fcn.src_ip].values
@@ -229,7 +232,9 @@ def add_station_id(df: pd.DataFrame, fcn: FileColumnNames, station_ids: bidict[i
     return df
 
 
-def add_pair_id(df: pd.DataFrame, fcn: FileColumnNames, pair_ids: bidict[int, frozenset], inplace: bool = False) -> pd.DataFrame:
+def add_pair_id(
+    df: pd.DataFrame, fcn: FileColumnNames, pair_ids: bidict[int, frozenset], inplace: bool = False
+) -> pd.DataFrame:
     """Add a pairId column determining the id of a communication pair. Direction does not matter.
 
     Parameters
@@ -261,6 +266,7 @@ def add_pair_id(df: pd.DataFrame, fcn: FileColumnNames, pair_ids: bidict[int, fr
 
     def get_pair_id(id1, id2):
         return pair_ids.inv[frozenset({id1, id2})]
+
     get_pair_id_vectorized = np.vectorize(get_pair_id)
 
     srcIds = df[fcn.src_station_id].values
@@ -271,7 +277,9 @@ def add_pair_id(df: pd.DataFrame, fcn: FileColumnNames, pair_ids: bidict[int, fr
     return df
 
 
-def add_direction_id(df: pd.DataFrame, fcn: FileColumnNames, direction_ids: bidict[int, Direction], inplace: bool = False) -> pd.DataFrame:
+def add_direction_id(
+    df: pd.DataFrame, fcn: FileColumnNames, direction_ids: bidict[int, Direction], inplace: bool = False
+) -> pd.DataFrame:
     """Add a directionId column determining the id of a communication pair. Direction does matter.
 
     Parameters
@@ -303,6 +311,7 @@ def add_direction_id(df: pd.DataFrame, fcn: FileColumnNames, direction_ids: bidi
 
     def get_direction_id(src, dst):
         return direction_ids.inv[(src, dst)]
+
     get_direction_id_vectorized = np.vectorize(get_direction_id)
 
     srcIds = df[fcn.src_station_id].values
@@ -411,7 +420,9 @@ def add_inter_arrival_time_sd(df: pd.DataFrame, fcn: FileColumnNames, inplace: b
     return df
 
 
-def add_communication_id(df: pd.DataFrame, fcn: FileColumnNames, comm_pairs: bidict[int, CommunicationPair] = None, inplace: bool = False) -> pd.DataFrame:
+def add_communication_id(
+    df: pd.DataFrame, fcn: FileColumnNames, comm_pairs: bidict[int, CommunicationPair] = None, inplace: bool = False
+) -> pd.DataFrame:
     """Add communication id column to dataframe. Direction DOES matter.
 
     Parameters
@@ -455,7 +466,9 @@ def add_communication_id(df: pd.DataFrame, fcn: FileColumnNames, comm_pairs: bid
     return df
 
 
-def add_communication_direction(df: pd.DataFrame, fcn: FileColumnNames, master_station_ip: str, inplace: bool = False) -> pd.DataFrame:
+def add_communication_direction(
+    df: pd.DataFrame, fcn: FileColumnNames, master_station_ip: str, inplace: bool = False
+) -> pd.DataFrame:
     """Add a bool column 'masterToSlave' determining whether the packet was sent from master to slave.
 
     True: master -> slave
@@ -599,7 +612,9 @@ def add_relative_days(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool = Fa
     return df
 
 
-def expand_values_to_columns(df: pd.DataFrame, col_name: str, inplace: bool = False, drop_column: bool = True) -> pd.DataFrame:
+def expand_values_to_columns(
+    df: pd.DataFrame, col_name: str, inplace: bool = False, drop_column: bool = True
+) -> pd.DataFrame:
     """Expand column values to independent columns.
 
     Parameters

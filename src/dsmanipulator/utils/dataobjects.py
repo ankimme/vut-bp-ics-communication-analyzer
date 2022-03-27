@@ -72,10 +72,6 @@ class FileColumnNames:
     rel_day : str
         Real name of relative day column.
 
-    double_column_station : bool
-        True if both ip and port columns are assigned.
-        False if only one column is used for describing a station.
-
     Notes
     -----
     Communication ID = A->B and B->A communications have a different ID.
@@ -98,7 +94,39 @@ class FileColumnNames:
 
     @property
     def double_column_station(self) -> bool:
+        """Determine whether both ip and port columns are assigned.
+
+        Returns
+        -------
+        bool
+            True if both ip and port columns are assigned.
+            False if only one column is used for describing a station.
+        """
         return bool(self.src_port and self.dst_port)
+
+    @property
+    def predefined_cols(self) -> list[str]:
+        """List of original names of columns that are not attributes.
+
+        These columns are used by the app for manipulating with the data.
+
+        Returns
+        -------
+        list[str]
+            Names of predefined columns as they were in the csv file.
+        """
+        assert self.timestamp and self.src_ip and self.dst_ip
+
+        result = [self.timestamp, self.src_ip, self.dst_ip]
+
+        if self.rel_time:
+            result.append(self.rel_time)
+
+        if self.double_column_station:
+            result.append(self.src_port)
+            result.append(self.dst_port)
+
+        return result
 
     # def __str__(self) -> str:
     #     return f"timestamp: {self.timestamp}\nrel_time: {self.rel_time}\nsrc_ip: {self.src_ip}\ndst_ip: {self.dst_ip}\nsrc_port: {self.src_port}\ndst_port: {self.dst_port}"

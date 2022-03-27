@@ -1,19 +1,35 @@
 # todo doc
 
-from PyQt6.QtWidgets import QWidget, QVBoxLayout
+from PyQt6.QtWidgets import QWidget, QTableView
+
+from gui.utils import DataFrameModel, EventData
+
+from dsmanipulator import dscreator as dsc
 
 
-class TimeFrameViewTab(QWidget):
+class TimeFrameViewTab(QTableView):
     def __init__(self, parent: QWidget = None) -> None:
         """TODO
 
         Attributes
         ----------
-        stat_widgets : dict[str, InfoLabel]
-            Key : Statistic name.
-            Value : Assigned label.
+        TODO
+
         """
         super().__init__(parent)
 
-        vbox_layout = QVBoxLayout(self)
-        self.layout(vbox_layout)
+        self.df_model: DataFrameModel
+        self.horizontalHeader().setStretchLastSection(True)
+        self.setAlternatingRowColors(True)
+        self.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
+
+    def update_model(self, data: EventData) -> None:
+        tmpdf = data.df.loc[:, [data.fcn.timestamp, data.attribute_name]]
+        tmpdf = dsc.convert_to_timeseries(tmpdf, data.fcn)
+        tmpdf = dsc.expand_values_to_columns(tmpdf, data.attribute_name)
+        tmpdf = tmpdf.resample(data.resample_rate).sum()
+        tmpdf = tmpdf.rename(columns={og: og.lstrip(f"{data.attribute_name}:") for og in tmpdf.columns})
+
+        self.df_model = DataFrameModel(tmpdf)
+        self.setModel(self.df_model)
+        self.update()
