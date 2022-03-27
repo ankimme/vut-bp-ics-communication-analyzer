@@ -12,7 +12,6 @@ March 2022
 """
 
 from enum import Enum, auto
-from abc import ABC
 from typing import Callable
 from dataclasses import dataclass
 from bidict import bidict
@@ -29,6 +28,7 @@ class EventData:
     df: pd.DataFrame
     fcn: FileColumnNames
     file_path: str
+    resample_rate: pd.Timedelta
     original_cols: list[str]
     station_ids: bidict[int, Station]
     pair_ids: bidict[int, frozenset]
@@ -41,8 +41,8 @@ class EventType(Enum):
     """Enumeration of types of events."""
 
     DATAFRAME_CHANGED = auto()
-    MASTER_STATION_CHANGED = auto()
-    SLAVE_STATIONS_CHANGED = auto()
+    MASTER_SLAVES_CHANGED = auto()
+    RESAMPLE_RATE_CHANGED = auto()
 
 
 class EventHandler:

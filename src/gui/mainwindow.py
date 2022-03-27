@@ -22,7 +22,7 @@ from dsmanipulator import dsanalyzer as dsa
 from gui.components import OpenCsvWizard
 from gui.tabs import OriginalDfTab, StatsTab, PairPlotsTab, SlavesPlotTab
 from gui.utils import EventType, EventHandler, EventData
-from gui.components import SelectMasterStationsDialog, SelectSlavesDialog
+from gui.components import SelectMasterStationsDialog, SelectSlavesDialog, ChangeResampleRate
 from dsmanipulator.utils import Direction, Station, FileColumnNames
 
 
@@ -39,6 +39,8 @@ class MainWindow(QMainWindow):
         Real names of predefined columns.
     event_handler : EventHandler
         A simple event handler for events that should change data in UI.
+    resample_rate : pd.Timedelta
+        Timespan used for data analysis.
     original_cols : list[str]
         Columns that where part of the original csv file.
     file_path : str
@@ -69,6 +71,7 @@ class MainWindow(QMainWindow):
         self.df: pd.DataFrame = None
         self.fcn: FileColumnNames
         self.event_handler = EventHandler()
+        self.resample_rate: pd.Timedelta = pd.Timedelta(minutes=5)
         self.original_cols: list[str]
         self.file_path: str
         self.master_station_id: int
@@ -91,21 +94,22 @@ class MainWindow(QMainWindow):
 
         stats_tab = StatsTab(self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, stats_tab.update_stats)
-        self.event_handler.subscribe(EventType.MASTER_STATION_CHANGED, stats_tab.update_master_station)
+        self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, stats_tab.update_master_station)
         tabs.addTab(stats_tab, "General statistics")
 
         # TAB 3 #
 
         pair_plots_tab = PairPlotsTab(self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, pair_plots_tab.update_plots)
-        self.event_handler.subscribe(EventType.MASTER_STATION_CHANGED, pair_plots_tab.update_master_station)
+        self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, pair_plots_tab.update_plots)
+        self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, pair_plots_tab.update_plots)
         tabs.addTab(pair_plots_tab, "Communication pairs")
 
         # TAB 4 #
-        slave_plots_tab = SlavesPlotTab(self)
+        slave_plots_tab = SlavesPlotTab(self.actions["Select master station"], self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, slave_plots_tab.update_plots)
-        self.event_handler.subscribe(EventType.MASTER_STATION_CHANGED, slave_plots_tab.update_master_station)
-        self.event_handler.subscribe(EventType.SLAVE_STATIONS_CHANGED, slave_plots_tab.update_plots)
+        self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, slave_plots_tab.update_plots)
+        self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, slave_plots_tab.update_plots)
         tabs.addTab(slave_plots_tab, "Slave communication")
 
         self.setCentralWidget(tabs)
@@ -158,7 +162,7 @@ class MainWindow(QMainWindow):
                 with open("../save/fcn.pkl", "wb") as f:
                     pickle.dump(self.fcn, f)
 
-    def select_master_station(self) -> None:
+    def change_master_station(self) -> None:
         """Open dialog for master station selection.
 
         If a new master station is selected, update the self.master_station_id and notify observers about the change.
@@ -167,17 +171,18 @@ class MainWindow(QMainWindow):
             dlg = SelectMasterStationsDialog(self.station_ids, self.master_station_id, parent=self)
             if dlg.exec():
                 self.master_station_id = dlg.get_master_station_id()
+                self.slave_station_ids = dsa.get_connected_stations(self.pair_ids, self.master_station_id)
 
                 data = self.get_event_data()
-                self.event_handler.notify(EventType.MASTER_STATION_CHANGED, data)
+                self.event_handler.notify(EventType.MASTER_SLAVES_CHANGED, data)
         else:
             dlg = QMessageBox(self)
             dlg.setWindowTitle("Warning")
-            dlg.setText("Pleas load a CSV file before proceeding")
+            dlg.setText("Please load a CSV file before proceeding")
             dlg.setIcon(QMessageBox.Icon.Warning)
             dlg.exec()
 
-    def select_slaves(self) -> None:
+    def change_slaves(self) -> None:
         """Open dialog for slave stations selection.
 
         If new slave stations are selected, update the self.slave_station_ids and notify observers about the change.
@@ -190,11 +195,27 @@ class MainWindow(QMainWindow):
                 self.slave_station_ids = dlg.get_slave_stations_ids()
 
                 data = self.get_event_data()
-                self.event_handler.notify(EventType.SLAVE_STATIONS_CHANGED, data)
+                self.event_handler.notify(EventType.MASTER_SLAVES_CHANGED, data)
         else:
             dlg = QMessageBox(self)
             dlg.setWindowTitle("Warning")
-            dlg.setText("Pleas load a CSV file before proceeding")
+            dlg.setText("Please load a CSV file before proceeding")
+            dlg.setIcon(QMessageBox.Icon.Warning)
+            dlg.exec()
+
+    def change_resample_rate(self) -> None:
+
+        if self.df is not None:
+            dlg = ChangeResampleRate(self.resample_rate)
+            if dlg.exec():
+                self.resample_rate = dlg.get_resample_rate()
+
+                data = self.get_event_data()
+                self.event_handler.notify(EventType.RESAMPLE_RATE_CHANGED, data)
+        else:
+            dlg = QMessageBox(self)
+            dlg.setWindowTitle("Warning")
+            dlg.setText("Please load a CSV file before proceeding")
             dlg.setIcon(QMessageBox.Icon.Warning)
             dlg.exec()
 
@@ -251,6 +272,7 @@ class MainWindow(QMainWindow):
             self.df,
             self.fcn,
             self.file_path,
+            self.resample_rate,
             self.original_cols,
             self.station_ids,
             self.pair_ids,
@@ -309,12 +331,17 @@ class MainWindow(QMainWindow):
         # SELECT MASTER STATION #
         name = "Select master station"
         actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
-        actions[name].triggered.connect(self.select_master_station)
+        actions[name].triggered.connect(self.change_master_station)
 
         # SELECT PAIRS #
         name = "Select pairs"
         actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
-        actions[name].triggered.connect(self.select_slaves)
+        actions[name].triggered.connect(self.change_slaves)
+
+        # CHANGE RESAMPLE RATE #
+        name = "Change resample rate"
+        actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
+        actions[name].triggered.connect(self.change_resample_rate)
 
         # EXIT #
         name = "Exit"

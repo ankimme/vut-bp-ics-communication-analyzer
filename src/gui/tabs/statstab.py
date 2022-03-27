@@ -30,6 +30,7 @@ class StatsTab(QWidget):
             self.stat_widgets[stat] = stat_label
             layout.addWidget(stat_label)
 
+        layout.addStretch(1)
         self.setLayout(layout)
 
     def update_stats(self, data: EventData) -> None:

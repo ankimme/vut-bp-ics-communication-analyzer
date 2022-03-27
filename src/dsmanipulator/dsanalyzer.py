@@ -109,6 +109,7 @@ def plot_pair_flow(
     pair_id: int,
     station_ids: bidict[int, Station],
     direction_ids: bidict[int, Direction],
+    resample_rate: pd.Timedelta
 ) -> None:
     #     # TODO doc
     assert all(col in df.columns for col in [fcn.timestamp, fcn.pair_id, fcn.direction_id])
@@ -136,7 +137,7 @@ def plot_pair_flow(
 
     # convert index to datetimeindex for resampling
     tmpdf = dsc.convert_to_timeseries(tmpdf, fcn)
-    tmpdf = tmpdf.resample("5min").sum()
+    tmpdf = tmpdf.resample(resample_rate).sum()
 
     # create column with sum
     tmpdf.insert(0, "Sum", 0)
@@ -171,6 +172,7 @@ def plot_slaves(
     axes: Axes,
     station_ids: bidict[int, Station],
     direction_ids: bidict[int, Direction],
+    resample_rate: pd.Timedelta
 ) -> None:
     #     # TODO doc
 
@@ -183,7 +185,7 @@ def plot_slaves(
     tmpdf = tmpdf[[fcn.timestamp] + expanded_cols]
 
     tmpdf = dsc.convert_to_timeseries(tmpdf, fcn)
-    tmpdf = tmpdf.resample("5min").sum()
+    tmpdf = tmpdf.resample(resample_rate).sum()
 
     axes.xaxis.set_major_locator(AutoDateLocator())
     axes.xaxis.set_major_formatter(DateFormatter("%H:%M"))
