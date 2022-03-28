@@ -409,13 +409,18 @@ class PageSetDataTypes(QWizardPage):
                 self.wizard().col_types_by_user[self.wizard().fcn.dst_ip].currentText() == "object"
             ), "Destination ip column should be of string type"
 
-            assert (
-                self.wizard().col_types_by_user[self.wizard().fcn.src_port].currentText() == "int"
-            ), "Source port column should be of integer type"
+            # both ports must be assigned
+            assert bool(self.groups["src_port"].checkedButton()) == bool(
+                self.groups["dst_port"].checkedButton()
+            ), "Cannot use only one port"
 
-            assert (
-                self.wizard().col_types_by_user[self.wizard().fcn.dst_port].currentText() == "int"
-            ), "Destination port column should be of integer type"
+            if self.groups["src_port"].checkedButton():
+                assert (
+                    self.wizard().col_types_by_user[self.wizard().fcn.src_port].currentText() == "int"
+                ), "Source port column should be of integer type"
+                assert (
+                    self.wizard().col_types_by_user[self.wizard().fcn.dst_port].currentText() == "int"
+                ), "Destination port column should be of integer type"
 
             # try loading the csv with given settings
             col_types = {key: value.currentText() for key, value in self.wizard().col_types_by_user.items()}
