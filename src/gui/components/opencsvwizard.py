@@ -40,8 +40,6 @@ from gui.utils import ListModel
 from dsmanipulator import dsloader as dsl
 from dsmanipulator import FileColumnNames
 
-# TODO dokumentace vseho X(
-
 
 class OpenCsvWizard(QWizard):
     """Wizard dialog used for getting the dialect and settings of a csv file.
@@ -55,6 +53,8 @@ class OpenCsvWizard(QWizard):
     col_types_by_user : dict[str, TypeComboBox]
         Key : Name of column in CSV file.
         Value : Combobox object in UI.
+    fcn : FileColumnNames
+        Real names of mandatory columns.
     """
 
     def __init__(self, file_name: str, parent: QWidget = None) -> None:
@@ -66,8 +66,6 @@ class OpenCsvWizard(QWizard):
             Name of CSV file.
         parent : QWidget, optional
             Parent widget, by default None
-        file_col_names : FileColumnNames
-            Real names of predefined columns.
         """
         super().__init__(parent)
 
@@ -90,7 +88,7 @@ class OpenCsvWizard(QWizard):
         self.setButtonLayout(buttons_layout)
 
     def get_csv_settings(self) -> tuple[csv.Dialect, dict[str, str], FileColumnNames]:
-        """
+        """Get settings for loading the csv file that the user selected in the dialog.
 
         Returns
         -------
@@ -101,96 +99,70 @@ class OpenCsvWizard(QWizard):
             Value : Data type of column. Selected by user.
         file_col_names : FileColumnNames
             Real names of predefined columns.
-
         """
+        # col_types: dict[str, str] = {}
+        # for key, value in self.col_types_by_user.items():
+        #     if value == "string":
+        #         col_types[key] = "str"
+        #     else:
+        #         col_types[key] = value.currentText()
+
         col_types: dict[str, str] = {key: value.currentText() for key, value in self.col_types_by_user.items()}
+
         return self.dialect, col_types, self.fcn
 
 
 class PageSetDelimiter(QWizardPage):
-    """Page used to set delimiter of csv file."""
+    """Page used to set delimiter of csv file.
+
+    Attributes
+    ----------
+    delimiter_line_edit : QLineEdit()
+        User input for changing delimiter.
+    columns_model : ListModel()
+        List model containing detected columns.
+    warning_label : QLabel()
+        A warning label on the bottom fo the page.
+    """
 
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
-
         self.setSubTitle("Set CSV delimiter")
 
         layout = QVBoxLayout()
-
         form_layout = QFormLayout()
 
         # Delimiter #
         self.delimiter_line_edit = QLineEdit()
         self.delimiter_line_edit.setMaxLength(1)
-        self.delimiter_line_edit.textEdited.connect(self.delimiter_line_edit_changed)
+        self.delimiter_line_edit.textChanged.connect(self.delimiter_line_edit_changed)
         form_layout.addRow(QLabel("Delimiter:"), self.delimiter_line_edit)
-
-        """ TODO uncomment
-        # Quote char #
-        self.quote_char_line_edit = QLineEdit()
-        self.quote_char_line_edit.setMaxLength(1)
-        self.quote_char_line_edit.textEdited.connect(self.quote_char_line_edit_changed)
-        form_layout.addRow(QLabel("Quote character:"), self.quote_char_line_edit)
-
-        # Escape char #
-        self.escape_char_line_edit = QLineEdit()
-        self.escape_char_line_edit.setMaxLength(1)
-        self.escape_char_line_edit.textEdited.connect(self.escape_char_line_edit_changed)
-        form_layout.addRow(QLabel("Escape character:"), self.escape_char_line_edit)
-
-        # Doublequote #
-        self.doublequote_check_box = QCheckBox()
-        self.doublequote_check_box.toggled.connect(self.doublequote_check_box_changed)
-        form_layout.addRow(QLabel("Double quote:"), self.doublequote_check_box)
-
-        # TODO engine selection c/python
-        """
 
         layout.addLayout(form_layout)
 
         # Columns preview #
         layout.addWidget(QLabel("Columns:"))
-        self.columns_view = QListView()
+        columns_view = QListView()
         self.columns_model = ListModel()
-        self.columns_view.setModel(self.columns_model)
-        layout.addWidget(self.columns_view)
+        columns_view.setModel(self.columns_model)
+        layout.addWidget(columns_view)
 
         # Warning #
         self.warning_label = QLabel()
         self.warning_label.setStyleSheet("QLabel { color: red }")
         layout.addWidget(self.warning_label)
 
-        # self.dialect.strict = True # TODO enable?
         self.setLayout(layout)
 
     def initializePage(self) -> None:
+        """Set delimiter to automatically detected."""
         self.delimiter_line_edit.setText(self.wizard().dialect.delimiter)
-        # self.doublequote_check_box.setChecked(self.dialect.doublequote) # TODO delete
-        # self.escape_char_line_edit.setText(self.dialect.escapechar)
-        # self.quote_char_line_edit.setText(self.dialect.quotechar)
-        self.update_column_preview()
 
     @pyqtSlot()
     def delimiter_line_edit_changed(self) -> None:
-        self.wizard().dialect.delimiter = self.delimiter_line_edit.text() or None
-        self.update_column_preview()
-
-    """ TODO uncomment
-    def quote_char_line_edit_changed(self):
-        self.dialect.quotechar = self.quote_char_line_edit.text() or None
-        self.update_column_preview()
-
-    def escape_char_line_edit_changed(self):
-        self.dialect.escapechar = self.escape_char_line_edit.text() or None
-        self.update_column_preview()
-
-    def doublequote_check_box_changed(self):
-        self.dialect.doublequote = self.doublequote_check_box.isChecked()
-        self.update_column_preview()
-    """
-
-    def update_column_preview(self) -> None:
         """Update preview of columns based on delimiter change."""
+        self.wizard().dialect.delimiter = self.delimiter_line_edit.text() or None
+
         try:
             self.columns_model.items = list(dsl.detect_columns(self.wizard().file_name, self.wizard().dialect).keys())
             self.warning_label.clear()
@@ -210,11 +182,12 @@ class PageSetDelimiter(QWizardPage):
         bool
             Columns were parsed correctly.
         """
-        return bool(self.delimiter_line_edit.text()) and bool(self.columns_model.items)
+        return bool(self.columns_model.items)
 
 
 class PageSetDataTypes(QWizardPage):
-    """_summary_
+    """Page used to set the data type (int, str...) and column type (timestamp, srcip ...) of detected columns.
+
 
     Attributes
     ----------
@@ -227,20 +200,25 @@ class PageSetDataTypes(QWizardPage):
     cols_ids : dict[int, str]
         Key : ID of column in UI.
         Value : Column name in CSV.
+    grid_layout : QGridLayout(self)
+        Layout containing column type selection buttons.
+    warning_label : QLabel()
+        A warning label on the bottom fo the page.
     """
 
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
 
-        self.layout = QVBoxLayout(self)
+        self.setSubTitle("Set column data types and select mandatory columns")
+
+        layout = QVBoxLayout(self)
         self.grid_layout = QGridLayout(self)
 
         self.warning_label = QLabel()
         self.warning_label.setStyleSheet("QLabel { color: red }")
 
-        self.layout.addLayout(self.grid_layout)
-        self.layout.addWidget(self.warning_label)
-        self.setLayout(self.layout)
+        layout.addLayout(self.grid_layout)
+        layout.addWidget(self.warning_label)
 
         self.groups = bidict(
             {
@@ -255,10 +233,10 @@ class PageSetDataTypes(QWizardPage):
 
         for group in self.groups.values():
             group.buttonToggled.connect(self.radio_button_changed)
-            # group.buttonClicked.connect(self.radio_button_changed)
-            # group.buttonClicked.connect(self.completeChanged.emit)
+        self.setLayout(layout)
 
     def initializePage(self) -> None:
+        """Create widgets."""
         self.wizard().fcn = FileColumnNames()
 
         # grid header
@@ -310,7 +288,6 @@ class PageSetDataTypes(QWizardPage):
             self.grid_layout.addWidget(QLabel(col_name), i, 0)
 
             type_combo_box = TypeComboBox(col_type)
-            # type_combo_box.currentTextChanged.connect(self.validate_user_settings)
 
             type_combo_box.currentTextChanged.connect(self.completeChanged.emit)
 
@@ -331,6 +308,7 @@ class PageSetDataTypes(QWizardPage):
         self.completeChanged.emit()
 
     def autodetect_file_col_names(self):
+        """Autodetect mandatory file column names and select them in UI."""
         for col_id, name in reversed(self.cols_ids.items()):
             name = name.lower()
             group = None
@@ -354,29 +332,6 @@ class PageSetDataTypes(QWizardPage):
 
             if group:
                 group.buttons()[col_id].setChecked(True)
-
-    # def validatePage(self) -> bool:
-    #     try:
-    #         col_types = {key: value.currentText() for key, value in self.wizard().col_types_by_user.items()}
-
-    #         dsl.load_data(self.wizard().file_name, col_types, self.fcn, self.wizard().dialect, 100)
-
-    #         return True
-    #     except Exception as e:
-    #         return False
-
-    # @pyqtSlot()
-    # def validate_user_settings(self):
-    #     pass
-    # try:
-    #     col_types = {key: value.currentText() for key, value in self.wizard().col_types_by_user.items()}
-
-    #     dsl.load_data(self.wizard().file_name, col_types, self.fcn, self.wizard().dialect, 100)
-
-    #     self.warning_label.clear()
-    # except Exception as e:
-    #     print(traceback.format_exc())
-    #     self.warning_label.setText("Could not parse csv. (Based on first 100 rows)")
 
     @pyqtSlot(QAbstractButton)
     def radio_button_changed(self, button: QRadioButton) -> None:
@@ -428,33 +383,86 @@ class PageSetDataTypes(QWizardPage):
         self.wizard().fcn.__dict__[attribute_name] = None
 
     def isComplete(self) -> bool:
+        """Validate user settings.
+
+        Returns
+        -------
+        bool
+            True if it is possible to load the csv file with given settings.
+        """
         try:
 
+            # check that mandatory groups are selected
             mandatory_groups = [self.groups["timestamp"], self.groups["src_ip"], self.groups["dst_ip"]]
-            assert all(group.checkedButton() for group in mandatory_groups)
+            assert all(
+                group.checkedButton() for group in mandatory_groups
+            ), "Timstamp, source ip and destination ip are mandatory"
 
+            # check databypes of mandatory groups
+            assert (
+                self.wizard().col_types_by_user[self.wizard().fcn.timestamp].currentText() == "datetime"
+            ), "Timestamp column should be of datetime type"
+            assert (
+                self.wizard().col_types_by_user[self.wizard().fcn.src_ip].currentText() == "object"
+            ), "Source ip column should be of string type"
+            assert (
+                self.wizard().col_types_by_user[self.wizard().fcn.dst_ip].currentText() == "object"
+            ), "Destination ip column should be of string type"
+
+            assert (
+                self.wizard().col_types_by_user[self.wizard().fcn.src_port].currentText() == "int"
+            ), "Source port column should be of integer type"
+
+            assert (
+                self.wizard().col_types_by_user[self.wizard().fcn.dst_port].currentText() == "int"
+            ), "Destination port column should be of integer type"
+
+            # try loading the csv with given settings
             col_types = {key: value.currentText() for key, value in self.wizard().col_types_by_user.items()}
-
-            dsl.load_data(self.wizard().file_name, col_types, self.wizard().dialect, 100)
+            dsl.load_data(self.wizard().file_name, col_types, self.wizard().dialect, row_limit=1000)
 
             self.warning_label.clear()
 
             return True
-        except (AssertionError) as e:  # TODO filter errors
-            self.warning_label.setText("Could not parse csv. (Based on first 100 rows)")
+        except AssertionError as e:  # TODO filter errors
+            self.warning_label.setText(str(e))
+            return False
+        except ValueError as e:
+            self.warning_label.setText(f"Cannot parse. Please check the datatypes of columns. Exception details: {e}")
             print(traceback.format_exc())
             return False
         except Exception as e:
             # TODO DELETE
+            self.warning_label.setText("Unknown error")
             print(traceback.format_exc())
             return False
 
 
 class TypeComboBox(QComboBox):
-    """ComboBox used for selecting data type of column."""
+    """ComboBox used for selecting data type of column.
 
-    def __init__(self, type, parent: QWidget = None) -> None:
+    Show 'string' instead of 'object'. But return 'object'.
+    """
+
+    def __init__(self, preselected_type, parent: QWidget = None) -> None:
         super().__init__(parent)
-        types = ["object", "int", "float", "bool", "datetime", "timedelta", "category"]  # TODO review
+        if preselected_type == "object":
+            preselected_type = "string"
+        types = ["string", "int", "float", "bool", "datetime", "category"]
         self.insertItems(0, types)
-        self.setCurrentIndex(types.index(type))
+        self.setCurrentIndex(types.index(preselected_type))
+
+    def currentText(self) -> str:
+        """Return selected dtype value.
+
+        Return 'object' instead of 'string'.
+
+        Returns
+        -------
+        str
+            Selected value.
+        """
+        if super().currentText() == "string":
+            return "object"
+        else:
+            return super().currentText()

@@ -131,7 +131,7 @@ class MainWindow(QMainWindow):
         """
 
         # TODO delete test
-        if True:
+        if False:
             self.file_path = "placeholder.py"
             import pickle
 
@@ -156,6 +156,7 @@ class MainWindow(QMainWindow):
                 # TODO exception
                 dialect, dtype, self.fcn = dialog.get_csv_settings()
                 self.df = dsl.load_data(file_path, dtype, dialect)
+
                 self.df.to_pickle("../save/df.pkl")  # TODO delete
                 self.original_cols = self.df.columns
 

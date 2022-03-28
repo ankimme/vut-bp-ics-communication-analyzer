@@ -13,12 +13,14 @@ def load_data(file_name: str, dtype: dict[str, str], dialect: csv.Dialect, row_l
     col_types = {k: v for k, v in dtype.items() if v != "datetime"}
     date_time_columns = [k for k, v in dtype.items() if v == "datetime"]
 
-    df = pd.read_csv(
-        file_name,
-        dialect=dialect,
-        dtype=col_types,
-        parse_dates=date_time_columns,
-    )
+    df = pd.read_csv(file_name, dialect=dialect, dtype=col_types, nrows=row_limit)
+
+    df = df.astype({k: "str" for k, v in col_types.items() if v == "object"})
+
+    for col_name in date_time_columns:
+        df[col_name] = pd.to_datetime(df[col_name])
+
+    
 
     # # TODO accept some Nones
     # if any(value is None for value in col_names.__dict__.values()):
