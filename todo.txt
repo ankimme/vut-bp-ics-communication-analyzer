@@ -74,3 +74,5 @@ statistiky
 
 kontrola ze timestamp ma spravny typ pri nacteni
 reagovat na event u timeframe view
+
+chang time limit

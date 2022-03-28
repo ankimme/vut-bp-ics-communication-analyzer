@@ -26,6 +26,7 @@ from dsmanipulator.utils import FileColumnNames, Direction, Station
 @dataclass(frozen=True)
 class EventData:
     df: pd.DataFrame
+    filtered_df: pd.DataFrame
     fcn: FileColumnNames
     file_path: str
     resample_rate: pd.Timedelta

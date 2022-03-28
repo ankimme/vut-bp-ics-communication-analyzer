@@ -4,7 +4,7 @@ import pandas as pd
 from bidict import bidict
 
 
-from PyQt6.QtWidgets import QWidget, QPushButton, QVBoxLayout
+from PyQt6.QtWidgets import QWidget, QVBoxLayout
 from PyQt6.QtGui import QAction
 
 from gui.utils import EventData
@@ -45,31 +45,16 @@ class SlavesPlotTab(QWidget):
         self.master_station_label.set_value(data.station_ids[data.master_station_id])
         self.resample_rate_label.set_value(data.resample_rate)
 
-        pair_combinations: list[frozenset] = []
-        for slave_station_id in data.slave_station_ids:
-            pair_combinations.append(frozenset({data.master_station_id, slave_station_id}))
-
-        # filter pair_ids so that only pairs containing the master station are present
-        filtered_pair_ids: bidict[int, frozenset] = bidict(
-            {
-                pair_id: pair_set
-                for pair_id, pair_set in data.pair_ids.items()
-                if data.master_station_id in pair_set and any(x for x in pair_combinations if x == pair_set)
-            }
-        )
-
         self.canvas.axes.cla()
 
-        if filtered_pair_ids:
-            tmpdf = data.df[data.df[data.fcn.pair_id].isin(filtered_pair_ids.keys())]
-
+        if len(data.filtered_df.index) > 0:
             # compute xlimits of axes
-            datetime_index = pd.DatetimeIndex(tmpdf[data.fcn.timestamp])
+            datetime_index = pd.DatetimeIndex(data.df[data.fcn.timestamp])
             left_xlim = min(datetime_index)
             right_xlim = max(datetime_index)
 
             self.canvas.axes.set_xlim([left_xlim, right_xlim])
-            dsa.plot_slaves(tmpdf, data.fcn, self.canvas.axes, data.station_ids, data.direction_ids, data.resample_rate)
+            dsa.plot_slaves(data.filtered_df, data.fcn, self.canvas.axes, data.resample_rate)
 
         self.canvas.draw()
         self.update()

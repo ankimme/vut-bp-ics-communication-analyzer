@@ -13,6 +13,7 @@ March 2022
 import pandas as pd
 from PyQt6.QtCore import Qt, QModelIndex, QAbstractTableModel, QAbstractListModel
 
+
 # https://doc.qt.io/qtforpython/examples/example_external__pandas.html
 class DataFrameModel(QAbstractTableModel):
     """A model to interface a Qt view with pandas dataframe

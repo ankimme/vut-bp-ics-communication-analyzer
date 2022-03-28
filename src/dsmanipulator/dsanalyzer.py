@@ -69,7 +69,7 @@ def detect_master_staion(
 
 
 # ids of stations that communicate with the master station
-def get_connected_stations(pair_ids: bidict[int, frozenset], station_id: int) -> list[int]:
+def get_connected_stations(pair_ids: bidict[int, frozenset], master_station_id: int) -> list[int]:
     """Get ids of stations that are communicating with given station.
 
     Parameters
@@ -77,23 +77,58 @@ def get_connected_stations(pair_ids: bidict[int, frozenset], station_id: int) ->
     pair_ids : bidict[int, frozenset]
         Key : ID of station.
         Value : Pair of station ids.
-    station_id : int
-        ID of station of interest.
+    master_station_id : int
+        ID of master station.
 
     Returns
     -------
     list[int]
-        Stations communicating with station of interest.
+        Ids of stations communicating with master.
     """
     connected_ids = set()
     for pair in pair_ids.values():
-        if station_id in pair:
+        if master_station_id in pair:
             x, y = pair
             connected_ids.add(x)
             connected_ids.add(y)
-    connected_ids.discard(station_id)
+    connected_ids.discard(master_station_id)
 
     return list(connected_ids)
+
+
+def get_connected_pairs(
+    master_station_id: int, slave_station_ids: list[int], pair_ids: bidict[int, frozenset]
+) -> list[int]:
+    """Get ids of communication pairs where the given master station and slave stations are involved.
+
+    Parameters
+    ----------
+    master_station_id : int
+        ID of master station.
+    slave_station_ids : list[int]
+        IDs of slave stations.
+    pair_ids : bidict[int, frozenset]
+        Key : ID of station.
+        Value : Pair of station ids.
+
+    Returns
+    -------
+    list[int]
+        IDs of pairs where master communicates with a slave from given list of slaves.
+    """
+
+    # all combinations of master station with slaves
+    # as frozenset which are used for filtering
+    pair_combinations: list[frozenset] = []
+    for slave_station_id in slave_station_ids:
+        pair_combinations.append(frozenset({master_station_id, slave_station_id}))
+
+    # filter pair_ids so that only pairs containing the master station are present
+    filtered_pair_ids: list[int] = [
+        pair_id for pair_id, pair_set in pair_ids.items() if any(x for x in pair_combinations if x == pair_set)
+    ]
+
+    return filtered_pair_ids
 
 
 # endregion
@@ -109,7 +144,7 @@ def plot_pair_flow(
     pair_id: int,
     station_ids: bidict[int, Station],
     direction_ids: bidict[int, Direction],
-    resample_rate: pd.Timedelta
+    resample_rate: pd.Timedelta,
 ) -> None:
     #     # TODO doc
     assert all(col in df.columns for col in [fcn.timestamp, fcn.pair_id, fcn.direction_id])
@@ -170,9 +205,7 @@ def plot_slaves(
     df: pd.DataFrame,
     fcn: FileColumnNames,
     axes: Axes,
-    station_ids: bidict[int, Station],
-    direction_ids: bidict[int, Direction],
-    resample_rate: pd.Timedelta
+    resample_rate: pd.Timedelta,
 ) -> None:
     #     # TODO doc
 
@@ -193,6 +226,29 @@ def plot_slaves(
     axes.legend([], [], frameon=False)
 
     sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=axes, legend=None)
+
+
+def plot_attribute_values(
+    df: pd.DataFrame, fcn: FileColumnNames, axes: Axes, attribute_name: str, resample_rate: pd.Timedelta
+):
+
+    tmpdf = df.loc[:, [fcn.timestamp, attribute_name]]
+
+    tmpdf = dsc.convert_to_timeseries(tmpdf, fcn)
+    tmpdf = dsc.expand_values_to_columns(tmpdf, attribute_name)
+    tmpdf = tmpdf.resample(resample_rate).sum()
+    tmpdf = tmpdf.rename(columns={og: og.lstrip(f"{attribute_name}:") for og in tmpdf.columns})
+
+    left_xlim = min(tmpdf.index)
+    right_xlim = max(tmpdf.index)
+    axes.set_xlim([left_xlim, right_xlim])
+
+    axes.xaxis.set_major_locator(AutoDateLocator())
+    axes.xaxis.set_major_formatter(DateFormatter("%H:%M"))
+
+    axes.legend([], [], frameon=False)
+
+    sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=axes)
 
 
 # endregion

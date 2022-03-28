@@ -424,7 +424,7 @@ class PageSetDataTypes(QWizardPage):
 
             # try loading the csv with given settings
             col_types = {key: value.currentText() for key, value in self.wizard().col_types_by_user.items()}
-            dsl.load_data(self.wizard().file_name, col_types, self.wizard().dialect, row_limit=1000)
+            dsl.load_data(self.wizard().file_name, col_types, self.wizard().dialect, row_limit=10000)
 
             self.warning_label.clear()
 

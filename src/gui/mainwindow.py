@@ -9,6 +9,7 @@ Date
 March 2022
 """
 
+from multiprocessing.sharedctypes import Value
 from bidict import bidict
 import pandas as pd
 
@@ -20,7 +21,7 @@ from dsmanipulator import dscreator as dsc
 from dsmanipulator import dsanalyzer as dsa
 
 from gui.components import OpenCsvWizard
-from gui.tabs import OriginalDfTab, StatsTab, PairPlotsTab, SlavesPlotTab, TimeFrameViewTab
+from gui.tabs import OriginalDfTab, StatsTab, PairPlotsTab, SlavesPlotTab, TimeFrameViewTab, AttributeStatsTab
 from gui.utils import EventType, EventHandler, EventData
 from gui.components import SelectMasterStationsDialog, SelectSlavesDialog, ChangeResampleRate, SelectAttributeDialog
 from dsmanipulator.utils import Direction, Station, FileColumnNames
@@ -35,6 +36,8 @@ class MainWindow(QMainWindow):
         Actions used in menu and toolbar.
     df : pd.DataFrame
         Original dataframe loaded from csv.
+    filtered_df : pd.DataFrame
+        Dataframe containing only communication between selected master and slaves.
     fcn : FileColumnNames
         Real names of predefined columns.
     event_handler : EventHandler
@@ -71,6 +74,7 @@ class MainWindow(QMainWindow):
 
         self.actions = self.create_actions()
         self.df: pd.DataFrame = None
+        self.filtered_df: pd.DataFrame = None
         self.fcn: FileColumnNames
         self.event_handler = EventHandler()
         self.resample_rate: pd.Timedelta = pd.Timedelta(minutes=5)
@@ -117,8 +121,19 @@ class MainWindow(QMainWindow):
 
         # TAB 5 #
         time_frame_view_tab = TimeFrameViewTab(self)
+        self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, time_frame_view_tab.update_model)
+        self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, time_frame_view_tab.update_model)
+        self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, time_frame_view_tab.update_model)
         self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, time_frame_view_tab.update_model)
         tabs.addTab(time_frame_view_tab, "Time frame view")
+
+        # TAB 6 #
+        attribute_stats_tab = AttributeStatsTab(self)
+        self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, attribute_stats_tab.update_plots)
+        self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, attribute_stats_tab.update_plots)
+        self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, attribute_stats_tab.update_plots)
+        self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, attribute_stats_tab.update_plots)
+        tabs.addTab(attribute_stats_tab, "Attribute stats")
 
         self.setCentralWidget(tabs)
 
@@ -131,7 +146,7 @@ class MainWindow(QMainWindow):
         """
 
         # TODO delete test
-        if False:
+        if True:
             self.file_path = "placeholder.py"
             import pickle
 
@@ -155,9 +170,17 @@ class MainWindow(QMainWindow):
             if dialog.exec():
                 # TODO exception
                 dialect, dtype, self.fcn = dialog.get_csv_settings()
-                self.df = dsl.load_data(file_path, dtype, dialect)
+                try:
+                    self.df = dsl.load_data(file_path, dtype, dialect)
+                except ValueError as e:
+                    dlg = QMessageBox(self)
+                    dlg.setWindowTitle("Error")
+                    dlg.setText(str(e))
+                    dlg.setIcon(QMessageBox.Icon.Warning)
+                    dlg.exec()
+                    return
 
-                self.df.to_pickle("../save/df.pkl")  # TODO delete
+                self.df.to_pickle("../save/df3.pkl")  # TODO delete
                 self.original_cols = self.df.columns
 
                 self.preprocess_df()
@@ -182,6 +205,11 @@ class MainWindow(QMainWindow):
                 self.master_station_id = dlg.get_master_station_id()
                 self.slave_station_ids = dsa.get_connected_stations(self.pair_ids, self.master_station_id)
 
+                filtered_pair_ids = dsa.get_connected_pairs(
+                    self.master_station_id, self.slave_station_ids, self.pair_ids
+                )
+                self.filtered_df = self.df[self.df[self.fcn.pair_id].isin(filtered_pair_ids)]
+
                 data = self.get_event_data()
                 self.event_handler.notify(EventType.MASTER_SLAVES_CHANGED, data)
         else:
@@ -202,6 +230,11 @@ class MainWindow(QMainWindow):
             )
             if dlg.exec():
                 self.slave_station_ids = dlg.get_slave_stations_ids()
+
+                filtered_pair_ids = dsa.get_connected_pairs(
+                    self.master_station_id, self.slave_station_ids, self.pair_ids
+                )
+                self.filtered_df = self.df[self.df[self.fcn.pair_id].isin(filtered_pair_ids)]
 
                 data = self.get_event_data()
                 self.event_handler.notify(EventType.MASTER_SLAVES_CHANGED, data)
@@ -268,6 +301,9 @@ class MainWindow(QMainWindow):
         self.master_station_id = dsa.detect_master_staion(self.station_ids, self.fcn.double_column_station)
         self.slave_station_ids = dsa.get_connected_stations(self.pair_ids, self.master_station_id)
 
+        filtered_pair_ids = dsa.get_connected_pairs(self.master_station_id, self.slave_station_ids, self.pair_ids)
+        self.filtered_df = self.df[self.df[self.fcn.pair_id].isin(filtered_pair_ids)]
+
     # def detect_master_staion(self) -> int | None:
     #     """Try to detect the master station by its port. Return the first found with corresponding port.
 
@@ -296,6 +332,7 @@ class MainWindow(QMainWindow):
         """
         data = EventData(
             self.df,
+            self.filtered_df,
             self.fcn,
             self.file_path,
             self.resample_rate,
