@@ -76,3 +76,17 @@ kontrola ze timestamp ma spravny typ pri nacteni
 reagovat na event u timeframe view
 
 chang time limit
+
+
+na ose y stejne meritko
+u komunikacnich dvojic udelat lepsi legendy
+proc zacina tak nahore
+! rozhodit grafy na smery !
+! tabulku stredni hodnota, odchylka, kvatrily !
+
+inter arrival time kdyz bude cas
+
+hledat stabilitu hodnot, set druhy s periodicitou
+
+
+uvod k cemu je dobra moje tvorba a cim se zabyvam - PROC A CO UMOZNUJE
