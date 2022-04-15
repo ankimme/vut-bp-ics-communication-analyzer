@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import QWidget, QDialog, QSpinBox, QVBoxLayout, QLabel, QDi
 from gui.components import InfoLabel
 
 
-class ChangeResampleRate(QDialog):
+class ChangeResampleRateDialog(QDialog):
     """Dialog used for changing the sample rate.
 
     Attributes

@@ -27,7 +27,6 @@ class OriginalDfTab(QTableView):
         self.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
 
     def update_model(self, data: EventData) -> None:
-        tmpdf = data.df_og.loc[:, data.df_og.columns]
-        self.df_model = DataFrameModel(tmpdf)
+        self.df_model = DataFrameModel(data.df_og)
         self.setModel(self.df_model)
         self.update()

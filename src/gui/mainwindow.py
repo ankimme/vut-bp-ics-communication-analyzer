@@ -9,21 +9,35 @@ Date
 March 2022
 """
 
-from multiprocessing.sharedctypes import Value
 from bidict import bidict
 import pandas as pd
 
-from PyQt6.QtWidgets import QMainWindow, QApplication, QToolBar, QFileDialog, QTabWidget, QMessageBox
+from PyQt6.QtWidgets import (
+    QMainWindow,
+    QApplication,
+    QToolBar,
+    QFileDialog,
+    QTabWidget,
+    QMessageBox,
+    QVBoxLayout,
+    QLabel,
+    QWidget,
+)
 from PyQt6.QtGui import QIcon, QAction
 
 from dsmanipulator import dsloader as dsl
 from dsmanipulator import dscreator as dsc
 from dsmanipulator import dsanalyzer as dsa
 
-from gui.components import OpenCsvWizard
+from gui.components import OpenCsvWizard, SettingsPanelWidget
 from gui.tabs import OriginalDfTab, StatsTab, PairPlotsTab, SlavesPlotTab, TimeFrameViewTab, AttributeStatsTab
 from gui.utils import EventType, EventHandler, EventData
-from gui.components import SelectMasterStationsDialog, SelectSlavesDialog, ChangeResampleRate, SelectAttributeDialog
+from gui.components import (
+    SelectMasterStationsDialog,
+    SelectSlavesDialog,
+    ChangeResampleRateDialog,
+    SelectAttributeDialog,
+)
 from dsmanipulator.utils import Direction, Station, FileColumnNames
 
 
@@ -89,10 +103,25 @@ class MainWindow(QMainWindow):
         self.pair_ids: bidict[int, frozenset]
         self.direction_ids: bidict[int, Direction]
 
+        main_layout = QVBoxLayout()
+
+        # TOOLBAR
+
         toolbar = self.create_toolbar()
         self.addToolBar(toolbar)
 
-        tabs = QTabWidget()
+        # SETTINGS PANEL
+
+        settings_panel = SettingsPanelWidget(parent=self)
+        self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, settings_panel.update_panel)
+        self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, settings_panel.update_panel)
+        self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, settings_panel.update_panel)
+        self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, settings_panel.update_panel)
+        main_layout.addWidget(settings_panel)
+
+        # TABS
+
+        tabs = QTabWidget(parent=self)
 
         # TAB 1 #
         original_df_tab = OriginalDfTab(self)
@@ -137,7 +166,12 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, attribute_stats_tab.update_tab)
         tabs.addTab(attribute_stats_tab, "Attribute stats")
 
-        self.setCentralWidget(tabs)
+        main_layout.addWidget(tabs)
+
+        main_widget = QWidget()
+        main_widget.setLayout(main_layout)
+
+        self.setCentralWidget(main_widget)
 
     # region Actions
 
@@ -154,7 +188,7 @@ class MainWindow(QMainWindow):
 
             with open("../save/fcn.pkl", "rb") as f:
                 self.fcn = pickle.load(f)
-            self.df_og = pd.read_pickle("../save/df3.pkl")
+            self.df_og = pd.read_pickle("../save/df.pkl")
 
             self.preprocess_df()
 
@@ -248,7 +282,7 @@ class MainWindow(QMainWindow):
     def change_resample_rate(self) -> None:
 
         if self.df is not None:
-            dlg = ChangeResampleRate(self.resample_rate, parent=self)
+            dlg = ChangeResampleRateDialog(self.resample_rate, parent=self)
             if dlg.exec():
                 self.resample_rate = dlg.get_resample_rate()
 

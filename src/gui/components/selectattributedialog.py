@@ -10,7 +10,7 @@ class SelectAttributeDialog(QDialog):
 
         self.setWindowTitle("Select attribute")
 
-        self.layout = QVBoxLayout()
+        self.main_layout = QVBoxLayout()
 
         self.button_group = QButtonGroup(self)
 
@@ -19,14 +19,14 @@ class SelectAttributeDialog(QDialog):
             if attribute == og_attribute:
                 button.setChecked(True)
             self.button_group.addButton(button)
-            self.layout.addWidget(button, Qt.AlignmentFlag.AlignCenter)
+            self.main_layout.addWidget(button, Qt.AlignmentFlag.AlignCenter)
 
         self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
 
-        self.layout.addWidget(self.buttons)
-        self.setLayout(self.layout)
+        self.main_layout.addWidget(self.buttons)
+        self.setLayout(self.main_layout)
 
     def get_attribute_name(self) -> str:
         """Return the selected attribute in dialog.
