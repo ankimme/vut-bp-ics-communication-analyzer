@@ -84,9 +84,8 @@ proc zacina tak nahore
 ! rozhodit grafy na smery !
 ! tabulku stredni hodnota, odchylka, kvatrily !
 
+start end nastaveni posuvnikem?
+
 inter arrival time kdyz bude cas
 
 hledat stabilitu hodnot, set druhy s periodicitou
-
-
-uvod k cemu je dobra moje tvorba a cim se zabyvam - PROC A CO UMOZNUJE

@@ -49,8 +49,7 @@ class FileColumnNames:
     ----------
     timestamp : str
         Real name of timeStamp column.
-    rel_time : str
-        Real name of relTime column.
+    
     src_ip : str
         Real name of srcIp column.
     dst_ip : str
@@ -60,6 +59,8 @@ class FileColumnNames:
     dst_port : str
         Real name of dstPort column.
 
+    rel_time : str
+        Real name of relTime column.
     src_station_id : str
         Real name of source station id column.
     dst_station_id : str

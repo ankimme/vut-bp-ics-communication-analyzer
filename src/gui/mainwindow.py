@@ -35,6 +35,8 @@ class MainWindow(QMainWindow):
     actions : dict[str, QAction]
         Actions used in menu and toolbar.
     df : pd.DataFrame
+        Working dataframe.
+    og_df : pd.DataFrame
         Original dataframe loaded from csv.
     filtered_df : pd.DataFrame
         Dataframe containing only communication between selected master and slaves.
@@ -129,10 +131,10 @@ class MainWindow(QMainWindow):
 
         # TAB 6 #
         attribute_stats_tab = AttributeStatsTab(self)
-        self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, attribute_stats_tab.update_plots)
-        self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, attribute_stats_tab.update_plots)
-        self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, attribute_stats_tab.update_plots)
-        self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, attribute_stats_tab.update_plots)
+        self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, attribute_stats_tab.update_tab)
+        self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, attribute_stats_tab.update_tab)
+        self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, attribute_stats_tab.update_tab)
+        self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, attribute_stats_tab.update_tab)
         tabs.addTab(attribute_stats_tab, "Attribute stats")
 
         self.setCentralWidget(tabs)
@@ -152,8 +154,7 @@ class MainWindow(QMainWindow):
 
             with open("../save/fcn.pkl", "rb") as f:
                 self.fcn = pickle.load(f)
-            self.df = pd.read_pickle("../save/df.pkl")
-            self.original_cols = self.df.columns
+            self.df_og = pd.read_pickle("../save/df3.pkl")
 
             self.preprocess_df()
 
@@ -171,7 +172,7 @@ class MainWindow(QMainWindow):
                 # TODO exception
                 dialect, dtype, self.fcn = dialog.get_csv_settings()
                 try:
-                    self.df = dsl.load_data(file_path, dtype, dialect)
+                    self.df_og = dsl.load_data(file_path, dtype, dialect)
                 except ValueError as e:
                     dlg = QMessageBox(self)
                     dlg.setWindowTitle("Error")
@@ -180,8 +181,7 @@ class MainWindow(QMainWindow):
                     dlg.exec()
                     return
 
-                self.df.to_pickle("../save/df3.pkl")  # TODO delete
-                self.original_cols = self.df.columns
+                self.df_og.to_pickle("../save/df3.pkl")  # TODO delete
 
                 self.preprocess_df()
 
@@ -264,7 +264,7 @@ class MainWindow(QMainWindow):
     def change_attribute_name(self) -> None:
 
         if self.df is not None:
-            filtered_attributes = list(set(self.original_cols) - set(self.fcn.predefined_cols))
+            filtered_attributes = list(set(self.df_og.columns) - set(self.fcn.predefined_cols))
             dlg = SelectAttributeDialog(self.attribute_name, filtered_attributes, parent=self)
             if dlg.exec():
                 self.attribute_name = dlg.get_attribute_name()
@@ -287,6 +287,8 @@ class MainWindow(QMainWindow):
 
         Also create or update attributes used in the rest of the code of the app.
         """
+        self.df = self.df_og.copy()
+
         dsc.add_relative_days(self.df, self.fcn, inplace=True)
 
         self.station_ids = dsc.create_station_ids(self.df, self.fcn)
@@ -304,24 +306,6 @@ class MainWindow(QMainWindow):
         filtered_pair_ids = dsa.get_connected_pairs(self.master_station_id, self.slave_station_ids, self.pair_ids)
         self.filtered_df = self.df[self.df[self.fcn.pair_id].isin(filtered_pair_ids)]
 
-    # def detect_master_staion(self) -> int | None:
-    #     """Try to detect the master station by its port. Return the first found with corresponding port.
-
-    #     Returns
-    #     -------
-    #     int | None
-    #         ID of master station. None if not found.
-    #     """
-    #     for station_id, station in self.station_ids.items():
-    #         if self.fcn.double_column_station:
-    #             if station.port == MASTER_STATION_PORT:
-    #                 return station_id
-    #         else:
-    #             if str(MASTER_STATION_PORT) in station.ip:
-    #                 return station_id
-    #     else:
-    #         return None
-
     def get_event_data(self) -> EventData:
         """Prepare event data.
 
@@ -332,11 +316,11 @@ class MainWindow(QMainWindow):
         """
         data = EventData(
             self.df,
+            self.df_og,
             self.filtered_df,
             self.fcn,
             self.file_path,
             self.resample_rate,
-            self.original_cols,
             self.attribute_name,
             self.station_ids,
             self.pair_ids,

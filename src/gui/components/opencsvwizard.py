@@ -100,13 +100,6 @@ class OpenCsvWizard(QWizard):
         file_col_names : FileColumnNames
             Real names of predefined columns.
         """
-        # col_types: dict[str, str] = {}
-        # for key, value in self.col_types_by_user.items():
-        #     if value == "string":
-        #         col_types[key] = "str"
-        #     else:
-        #         col_types[key] = value.currentText()
-
         col_types: dict[str, str] = {key: value.currentText() for key, value in self.col_types_by_user.items()}
 
         return self.dialect, col_types, self.fcn
@@ -209,7 +202,9 @@ class PageSetDataTypes(QWizardPage):
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
 
-        self.setSubTitle("Set column data types and select mandatory columns")
+        self.setSubTitle(
+            "Set column data types and their functionality. Timestamp, source and destination IPs are mandatory."
+        )
 
         layout = QVBoxLayout(self)
         self.grid_layout = QGridLayout(self)

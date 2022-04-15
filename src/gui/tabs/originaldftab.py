@@ -10,7 +10,6 @@ March 2022
 """
 
 
-
 from PyQt6.QtWidgets import QWidget, QTableView
 
 from gui.utils import DataFrameModel, EventData
@@ -28,7 +27,7 @@ class OriginalDfTab(QTableView):
         self.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
 
     def update_model(self, data: EventData) -> None:
-        tmpdf = data.df.loc[:, data.original_cols]
+        tmpdf = data.df_og.loc[:, data.df_og.columns]
         self.df_model = DataFrameModel(tmpdf)
         self.setModel(self.df_model)
         self.update()
