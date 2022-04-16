@@ -52,7 +52,7 @@ class StatsTab(QWidget):
         self.stat_widgets["File name"].set_value(os.path.basename(data.file_path))
         self.stat_widgets["Row count"].set_value(len(data.df_og.index))
         self.stat_widgets["Column count"].set_value(len(data.df_og.columns))
-        self.stat_widgets["Time span"].set_value(dsa.get_df_time_span(data.df, data.fcn))
+        self.stat_widgets["Time span"].set_value(dsa.get_df_time_span(data.df_working, data.fcn))
         self.stat_widgets["Pairs count"].set_value(len(data.pair_ids))
         self.stat_widgets["Master station"].set_value(str(data.station_ids[data.master_station_id]))
 

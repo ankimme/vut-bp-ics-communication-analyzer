@@ -9,6 +9,7 @@ Date
 March 2022
 """
 
+from datetime import datetime
 from bidict import bidict
 import pandas as pd
 
@@ -37,6 +38,9 @@ from gui.components import (
     SelectSlavesDialog,
     ChangeResampleRateDialog,
     SelectAttributeDialog,
+    LoadWarningMessageBox,
+    ChangeIntervalDialog,
+    ChangeDirectionDialog,
 )
 from dsmanipulator.utils import Direction, Station, FileColumnNames
 
@@ -48,19 +52,15 @@ class MainWindow(QMainWindow):
     ----------
     actions : dict[str, QAction]
         Actions used in menu and toolbar.
-    df : pd.DataFrame
-        Working dataframe.
-    og_df : pd.DataFrame
-        Original dataframe loaded from csv.
-    filtered_df : pd.DataFrame
-        Dataframe containing only communication between selected master and slaves.
+    df_working : pd.DataFrame
+        Original dataframe with custom columns.
     fcn : FileColumnNames
         Real names of predefined columns.
     event_handler : EventHandler
         A simple event handler for events that should change data in UI.
     resample_rate : pd.Timedelta
         Timespan used for data analysis.
-    original_cols : list[str]
+    og_cols : list[str]
         Columns that where part of the original csv file.
     attribute_name : str
         Attribute of interest used in analysis.
@@ -81,6 +81,13 @@ class MainWindow(QMainWindow):
         Key : ID of station.
         Value : Pair of station ids. Source and destination.
         Direction does matter.
+
+    Properties
+    ----------
+    df_og : pd.DataFrame
+        Original dataframe loaded from csv.
+    df_filtered : pd.DataFrame
+        Working dataframe with applied user filters.
     """
 
     def __init__(self) -> None:
@@ -89,13 +96,14 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(800, 500)
 
         self.actions = self.create_actions()
-        self.df: pd.DataFrame = None
-        self.filtered_df: pd.DataFrame = None
+        self.df_working: pd.DataFrame = None
         self.fcn: FileColumnNames
         self.event_handler = EventHandler()
         self.resample_rate: pd.Timedelta = pd.Timedelta(minutes=5)
-        self.original_cols: list[str]
+        self.og_cols: list[str]
         self.attribute_name: str = None
+        self.start_dt: datetime  # TODO doc
+        self.end_dt: datetime
         self.file_path: str
         self.master_station_id: int
         self.slave_station_ids: list[int] = []
@@ -115,6 +123,8 @@ class MainWindow(QMainWindow):
         settings_panel = SettingsPanelWidget(parent=self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, settings_panel.update_panel)
         self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, settings_panel.update_panel)
+        self.event_handler.subscribe(EventType.DIRECTION_CHANGED, settings_panel.update_panel)
+        self.event_handler.subscribe(EventType.INTERVAL_CHANGED, settings_panel.update_panel)
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, settings_panel.update_panel)
         self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, settings_panel.update_panel)
         main_layout.addWidget(settings_panel)
@@ -126,6 +136,9 @@ class MainWindow(QMainWindow):
         # TAB 1 #
         original_df_tab = OriginalDfTab(self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, original_df_tab.update_model)
+        self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, original_df_tab.update_model)
+        self.event_handler.subscribe(EventType.INTERVAL_CHANGED, original_df_tab.update_model)
+        # TODO direction and interval
         tabs.addTab(original_df_tab, "Original Dataframe")
 
         # TAB 2 #
@@ -173,6 +186,49 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(main_widget)
 
+    # region Properties
+
+    @property
+    def df_og(self) -> pd.DataFrame:
+        """Original dataframe loaded from csv."""
+        if self.df_working is not None:
+            return self.df_working.loc[:, self.og_cols]
+        else:
+            return None
+
+    @property
+    def df_filtered(self) -> pd.DataFrame:
+        """Working dataframe with applied user filters."""
+        if self.df_working is not None:
+            filtered_pair_ids = dsa.get_connected_pairs(self.master_station_id, self.slave_station_ids, self.pair_ids)
+            return self.df_working[
+                (self.df_working[self.fcn.pair_id].isin(filtered_pair_ids))
+                & (self.df_working[self.fcn.timestamp].between(self.start_dt, self.end_dt))
+            ]  # TODO filter other params
+        else:
+            return None
+
+    @property
+    def event_data(self) -> EventData:
+        """Event data object."""
+        data = EventData(
+            self.df_working,
+            self.df_og,
+            self.df_filtered,
+            self.fcn,
+            self.file_path,
+            self.resample_rate,
+            self.attribute_name,
+            self.station_ids,
+            self.pair_ids,
+            self.direction_ids,
+            self.master_station_id,
+            self.slave_station_ids,
+        )
+        return data
+
+    # endregion
+
     # region Actions
 
     def load_csv(self) -> None:
@@ -188,12 +244,11 @@ class MainWindow(QMainWindow):
 
             with open("../save/fcn.pkl", "rb") as f:
                 self.fcn = pickle.load(f)
-            self.df_og = pd.read_pickle("../save/df.pkl")
+            self.df_working = pd.read_pickle("../save/df.pkl")
 
             self.preprocess_df()
 
-            data = self.get_event_data()
-            self.event_handler.notify(EventType.DATAFRAME_CHANGED, data)
+            self.event_handler.notify(EventType.DATAFRAME_CHANGED, self.event_data)
 
             return
 
@@ -206,7 +261,7 @@ class MainWindow(QMainWindow):
                 # TODO exception
                 dialect, dtype, self.fcn = dialog.get_csv_settings()
                 try:
-                    self.df_og = dsl.load_data(file_path, dtype, dialect)
+                    self.df_working = dsl.load_data(file_path, dtype, dialect)
                 except ValueError as e:
                     dlg = QMessageBox(self)
                     dlg.setWindowTitle("Error")
@@ -215,12 +270,11 @@ class MainWindow(QMainWindow):
                     dlg.exec()
                     return
 
-                self.df_og.to_pickle("../save/df3.pkl")  # TODO delete
+                self.df_working.to_pickle("../save/df3.pkl")  # TODO delete
 
                 self.preprocess_df()
 
-                data = self.get_event_data()
-                self.event_handler.notify(EventType.DATAFRAME_CHANGED, data)
+                self.event_handler.notify(EventType.DATAFRAME_CHANGED, self.event_data)
 
                 # # TODO delete
                 import pickle
@@ -233,84 +287,82 @@ class MainWindow(QMainWindow):
 
         If a new master station is selected, update the self.master_station_id and notify observers about the change.
         """
-        if self.df is not None:
+        if self.df_working is not None:
             dlg = SelectMasterStationsDialog(self.station_ids, self.master_station_id, parent=self)
             if dlg.exec():
                 self.master_station_id = dlg.get_master_station_id()
                 self.slave_station_ids = dsa.get_connected_stations(self.pair_ids, self.master_station_id)
 
-                filtered_pair_ids = dsa.get_connected_pairs(
-                    self.master_station_id, self.slave_station_ids, self.pair_ids
-                )
-                self.filtered_df = self.df[self.df[self.fcn.pair_id].isin(filtered_pair_ids)]
-
-                data = self.get_event_data()
-                self.event_handler.notify(EventType.MASTER_SLAVES_CHANGED, data)
+                self.event_handler.notify(EventType.MASTER_SLAVES_CHANGED, self.event_data)
         else:
-            dlg = QMessageBox(self)
-            dlg.setWindowTitle("Warning")
-            dlg.setText("Please load a CSV file before proceeding")
-            dlg.setIcon(QMessageBox.Icon.Warning)
-            dlg.exec()
+            LoadWarningMessageBox(self).exec()
 
     def change_slaves(self) -> None:
         """Open dialog for slave stations selection.
 
         If new slave stations are selected, update the self.slave_station_ids and notify observers about the change.
         """
-        if self.df is not None:
+        if self.df_working is not None:
             dlg = SelectSlavesDialog(
                 self.master_station_id, self.slave_station_ids, self.station_ids, self.pair_ids, parent=self
             )
             if dlg.exec():
                 self.slave_station_ids = dlg.get_slave_stations_ids()
 
-                filtered_pair_ids = dsa.get_connected_pairs(
-                    self.master_station_id, self.slave_station_ids, self.pair_ids
-                )
-                self.filtered_df = self.df[self.df[self.fcn.pair_id].isin(filtered_pair_ids)]
-
-                data = self.get_event_data()
-                self.event_handler.notify(EventType.MASTER_SLAVES_CHANGED, data)
+                self.event_handler.notify(EventType.MASTER_SLAVES_CHANGED, self.event_data)
         else:
-            dlg = QMessageBox(self)
-            dlg.setWindowTitle("Warning")
-            dlg.setText("Please load a CSV file before proceeding")
-            dlg.setIcon(QMessageBox.Icon.Warning)
-            dlg.exec()
+            LoadWarningMessageBox(self).exec()
+
+    def change_direction(self) -> None:
+        if self.df_working is not None:
+            # dlg = ChangeDirectionDialog(
+            #     # TODO
+            # )
+            # if dlg.exec():
+            # TODO self.direction =
+
+            # self.event_handler.notify(EventType.DIRECTION_CHANGED, self.event_data)
+            pass
+        else:
+            LoadWarningMessageBox(self).exec()
+
+    def change_interval(self) -> None:
+        if self.df_working is not None:
+            dlg = ChangeIntervalDialog(
+                start=self.start_dt,
+                end=self.end_dt,
+                low_limit=self.df_working[self.fcn.timestamp].iloc[0],
+                upper_limit=self.df_working[self.fcn.timestamp].iloc[-1],
+                parent=self,
+            )
+            if dlg.exec():
+                self.start_dt, self.end_dt = dlg.get_new_interval()
+                self.event_handler.notify(EventType.INTERVAL_CHANGED, self.event_data)
+        else:
+            LoadWarningMessageBox(self).exec()
 
     def change_resample_rate(self) -> None:
 
-        if self.df is not None:
+        if self.df_working is not None:
             dlg = ChangeResampleRateDialog(self.resample_rate, parent=self)
             if dlg.exec():
                 self.resample_rate = dlg.get_resample_rate()
 
-                data = self.get_event_data()
-                self.event_handler.notify(EventType.RESAMPLE_RATE_CHANGED, data)
+                self.event_handler.notify(EventType.RESAMPLE_RATE_CHANGED, self.event_data)
         else:
-            dlg = QMessageBox(self)
-            dlg.setWindowTitle("Warning")
-            dlg.setText("Please load a CSV file before proceeding")
-            dlg.setIcon(QMessageBox.Icon.Warning)
-            dlg.exec()
+            LoadWarningMessageBox(self).exec()
 
     def change_attribute_name(self) -> None:
 
-        if self.df is not None:
-            filtered_attributes = list(set(self.df_og.columns) - set(self.fcn.predefined_cols))
+        if self.df_working is not None:
+            filtered_attributes = list(set(self.og_cols) - set(self.fcn.predefined_cols))
             dlg = SelectAttributeDialog(self.attribute_name, filtered_attributes, parent=self)
             if dlg.exec():
                 self.attribute_name = dlg.get_attribute_name()
 
-                data = self.get_event_data()
-                self.event_handler.notify(EventType.ATTRIBUTE_CHANGED, data)
+                self.event_handler.notify(EventType.ATTRIBUTE_CHANGED, self.event_data)
         else:
-            dlg = QMessageBox(self)
-            dlg.setWindowTitle("Warning")
-            dlg.setText("Please load a CSV file before proceeding")
-            dlg.setIcon(QMessageBox.Icon.Warning)
-            dlg.exec()
+            LoadWarningMessageBox(self).exec()
 
     # endregion
 
@@ -321,48 +373,24 @@ class MainWindow(QMainWindow):
 
         Also create or update attributes used in the rest of the code of the app.
         """
-        self.df = self.df_og.copy()
+        self.og_cols = self.df_working.columns
 
-        dsc.add_relative_days(self.df, self.fcn, inplace=True)
+        dsc.add_relative_days(self.df_working, self.fcn, inplace=True)
 
-        self.station_ids = dsc.create_station_ids(self.df, self.fcn)
-        dsc.add_station_id(self.df, self.fcn, self.station_ids, inplace=True)
+        self.start_dt = self.df_working[self.fcn.timestamp].iloc[0]
+        self.end_dt = self.df_working[self.fcn.timestamp].iloc[-1]
 
-        self.pair_ids = dsc.create_pair_ids(self.df, self.fcn)
-        dsc.add_pair_id(self.df, self.fcn, self.pair_ids, inplace=True)
+        self.station_ids = dsc.create_station_ids(self.df_working, self.fcn)
+        dsc.add_station_id(self.df_working, self.fcn, self.station_ids, inplace=True)
 
-        self.direction_ids = dsc.create_direction_ids(self.df, self.fcn)
-        dsc.add_direction_id(self.df, self.fcn, self.direction_ids, inplace=True)
+        self.pair_ids = dsc.create_pair_ids(self.df_working, self.fcn)
+        dsc.add_pair_id(self.df_working, self.fcn, self.pair_ids, inplace=True)
+
+        self.direction_ids = dsc.create_direction_ids(self.df_working, self.fcn)
+        dsc.add_direction_id(self.df_working, self.fcn, self.direction_ids, inplace=True)
 
         self.master_station_id = dsa.detect_master_staion(self.station_ids, self.fcn.double_column_station)
         self.slave_station_ids = dsa.get_connected_stations(self.pair_ids, self.master_station_id)
-
-        filtered_pair_ids = dsa.get_connected_pairs(self.master_station_id, self.slave_station_ids, self.pair_ids)
-        self.filtered_df = self.df[self.df[self.fcn.pair_id].isin(filtered_pair_ids)]
-
-    def get_event_data(self) -> EventData:
-        """Prepare event data.
-
-        Returns
-        -------
-        EventData
-            Data used by events.
-        """
-        data = EventData(
-            self.df,
-            self.df_og,
-            self.filtered_df,
-            self.fcn,
-            self.file_path,
-            self.resample_rate,
-            self.attribute_name,
-            self.station_ids,
-            self.pair_ids,
-            self.direction_ids,
-            self.master_station_id,
-            self.slave_station_ids,
-        )
-        return data
 
     # endregion
 
@@ -419,6 +447,16 @@ class MainWindow(QMainWindow):
         name = "Select pairs"
         actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
         actions[name].triggered.connect(self.change_slaves)
+
+        # CHANGE DIRECTION #
+        name = "Change direction"
+        actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
+        actions[name].triggered.connect(self.change_direction)
+
+        # CHANGE INTERVAL #
+        name = "Change interval"
+        actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
+        actions[name].triggered.connect(self.change_interval)
 
         # CHANGE RESAMPLE RATE #
         name = "Change resample rate"

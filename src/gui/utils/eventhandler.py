@@ -25,9 +25,9 @@ from dsmanipulator.utils import FileColumnNames, Direction, Station
 
 @dataclass(frozen=True)
 class EventData:
-    df: pd.DataFrame
+    df_working: pd.DataFrame
     df_og: pd.DataFrame
-    filtered_df: pd.DataFrame
+    df_filtered: pd.DataFrame
     fcn: FileColumnNames
     file_path: str
     resample_rate: pd.Timedelta
@@ -46,6 +46,8 @@ class EventType(Enum):
     MASTER_SLAVES_CHANGED = auto()
     RESAMPLE_RATE_CHANGED = auto()
     ATTRIBUTE_CHANGED = auto()
+    DIRECTION_CHANGED = auto()
+    INTERVAL_CHANGED = auto()
 
 
 class EventHandler:

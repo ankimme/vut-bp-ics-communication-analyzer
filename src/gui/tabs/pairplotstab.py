@@ -17,7 +17,6 @@ from PyQt6.QtWidgets import QWidget, QScrollArea, QVBoxLayout, QSizePolicy, QLab
 from dsmanipulator import dsanalyzer as dsa
 
 from gui.utils import EventData
-from gui.components import InfoLabel
 from gui.components import MplCanvas
 
 
@@ -29,7 +28,7 @@ class PairPlotsTab(QScrollArea):
 
     def update_plots(self, data: EventData) -> None:
         # TODO rearrange to init
-        assert all(col in data.df.columns for col in [data.fcn.timestamp, data.fcn.pair_id])
+        assert all(col in data.df_working.columns for col in [data.fcn.timestamp, data.fcn.pair_id])
 
         parent_widget = QWidget(self)
 
@@ -38,7 +37,7 @@ class PairPlotsTab(QScrollArea):
         vbox_layout = QVBoxLayout(parent_widget)
 
         # compute xlimits of axes
-        datetime_index = pd.DatetimeIndex(data.df[data.fcn.timestamp])
+        datetime_index = pd.DatetimeIndex(data.df_working[data.fcn.timestamp])
         left_xlim = min(datetime_index)
         right_xlim = max(datetime_index)
 
@@ -46,7 +45,7 @@ class PairPlotsTab(QScrollArea):
             plot = MplCanvas(parent=parent_widget, width=7, height=3.5, dpi=100)
             plot.axes.set_xlim([left_xlim, right_xlim])
             dsa.plot_pair_flow(
-                data.df, data.fcn, plot.axes, pair_id, data.station_ids, data.direction_ids, data.resample_rate
+                data.df_working, data.fcn, plot.axes, pair_id, data.station_ids, data.direction_ids, data.resample_rate
             )
 
             l1 = QLabel(f"Stations")

@@ -1,7 +1,6 @@
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QTableView
 from gui.components import MplCanvas
 from gui.utils import DataFrameModel, EventData
-from dsmanipulator import dscreator as dsc
 from dsmanipulator import dsanalyzer as dsa
 
 
@@ -32,11 +31,11 @@ class AttributeStatsTab(QWidget):
         if data.attribute_name:
 
             self.canvas.axes.cla()
-            if len(data.filtered_df.index) == 0:
+            if len(data.df_filtered.index) == 0:
                 return
 
             dsa.plot_attribute_values(
-                data.filtered_df, data.fcn, self.canvas.axes, data.attribute_name, data.resample_rate
+                data.df_filtered, data.fcn, self.canvas.axes, data.attribute_name, data.resample_rate
             )
 
             self.canvas.draw()

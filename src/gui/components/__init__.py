@@ -6,3 +6,6 @@ from .selectslavesdialog import SelectSlavesDialog
 from .changeresampleratedialog import ChangeResampleRateDialog
 from .selectattributedialog import SelectAttributeDialog
 from .settingspanelwidget import SettingsPanelWidget
+from .loadwarningbox import LoadWarningMessageBox
+from .changeintervaldialog import ChangeIntervalDialog
+from .changedirectiondialog import ChangeDirectionDialog

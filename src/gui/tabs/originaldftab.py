@@ -27,6 +27,7 @@ class OriginalDfTab(QTableView):
         self.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
 
     def update_model(self, data: EventData) -> None:
-        self.df_model = DataFrameModel(data.df_og)
+        self.df_model = DataFrameModel(data.df_filtered)
+        print(data.df_filtered.head())
         self.setModel(self.df_model)
         self.update()

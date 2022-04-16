@@ -40,21 +40,21 @@ class SlavesPlotTab(QWidget):
         self.setLayout(layout)
 
     def update_plots(self, data: EventData) -> None:
-        assert all(col in data.df.columns for col in [data.fcn.timestamp, data.fcn.pair_id])
+        assert all(col in data.df_working.columns for col in [data.fcn.timestamp, data.fcn.pair_id])
 
         self.master_station_label.set_value(data.station_ids[data.master_station_id])
         self.resample_rate_label.set_value(data.resample_rate)
 
         self.canvas.axes.cla()
 
-        if len(data.filtered_df.index) > 0:
+        if len(data.df_filtered.index) > 0:
             # compute xlimits of axes
-            datetime_index = pd.DatetimeIndex(data.df[data.fcn.timestamp])
+            datetime_index = pd.DatetimeIndex(data.df_working[data.fcn.timestamp])
             left_xlim = min(datetime_index)
             right_xlim = max(datetime_index)
 
             self.canvas.axes.set_xlim([left_xlim, right_xlim])
-            dsa.plot_slaves(data.filtered_df, data.fcn, self.canvas.axes, data.resample_rate)
+            dsa.plot_slaves(data.df_filtered, data.fcn, self.canvas.axes, data.resample_rate)
 
         self.canvas.draw()
         self.update()

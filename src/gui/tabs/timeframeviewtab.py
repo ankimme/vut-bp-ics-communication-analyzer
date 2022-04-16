@@ -31,7 +31,7 @@ class TimeFrameViewTab(QTableView):
 
             # filter columns
 
-            tmpdf = data.filtered_df.loc[:, [data.fcn.timestamp, data.attribute_name]]
+            tmpdf = data.df_filtered.loc[:, [data.fcn.timestamp, data.attribute_name]]
 
             tmpdf = dsc.convert_to_timeseries(tmpdf, data.fcn)
             tmpdf = dsc.expand_values_to_columns(tmpdf, data.attribute_name)

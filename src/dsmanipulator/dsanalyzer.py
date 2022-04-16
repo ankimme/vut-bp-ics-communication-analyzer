@@ -11,6 +11,7 @@ from bidict import bidict
 # region Stats
 
 
+
 def get_df_time_span(df: pd.DataFrame, fcn: FileColumnNames) -> pd.Timedelta:
     """Get timespan of whole dataframe. From start to end.
 
