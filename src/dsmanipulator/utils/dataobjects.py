@@ -1,5 +1,13 @@
+from enum import IntEnum, auto
 from dataclasses import dataclass
 from collections import namedtuple
+
+
+class DirectionEnum(IntEnum):
+    BOTH = auto()
+    M2S = auto()
+    S2M = auto()
+
 
 # Pair of station ids. Source and destination.
 Direction = namedtuple("Direction", "src dst")
@@ -49,7 +57,7 @@ class FileColumnNames:
     ----------
     timestamp : str
         Real name of timeStamp column.
-    
+
     src_ip : str
         Real name of srcIp column.
     dst_ip : str
@@ -128,6 +136,3 @@ class FileColumnNames:
             result.append(self.dst_port)
 
         return result
-
-    # def __str__(self) -> str:
-    #     return f"timestamp: {self.timestamp}\nrel_time: {self.rel_time}\nsrc_ip: {self.src_ip}\ndst_ip: {self.dst_ip}\nsrc_port: {self.src_port}\ndst_port: {self.dst_port}"

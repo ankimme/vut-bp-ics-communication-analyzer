@@ -1,1 +1,1 @@
-from .dataobjects import FileColumnNames, Station, Direction
+from .dataobjects import FileColumnNames, Station, Direction, DirectionEnum

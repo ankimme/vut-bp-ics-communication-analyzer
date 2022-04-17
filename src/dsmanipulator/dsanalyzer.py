@@ -3,13 +3,13 @@ from matplotlib.axes import Axes
 import pandas as pd
 import seaborn as sns
 
-from . import dscreator as dsc
-from .utils.dataobjects import Direction, FileColumnNames, Station
+from dsmanipulator import dscreator as dsc
+from dsmanipulator.utils import Direction, FileColumnNames, Station, DirectionEnum
+
 
 from bidict import bidict
 
 # region Stats
-
 
 
 def get_df_time_span(df: pd.DataFrame, fcn: FileColumnNames) -> pd.Timedelta:
@@ -69,14 +69,13 @@ def detect_master_staion(
         return None
 
 
-# ids of stations that communicate with the master station
 def get_connected_stations(pair_ids: bidict[int, frozenset], master_station_id: int) -> list[int]:
-    """Get ids of stations that are communicating with given station.
+    """Get ids of stations that are communicating with master.
 
     Parameters
     ----------
     pair_ids : bidict[int, frozenset]
-        Key : ID of station.
+        Key : ID of pair.
         Value : Pair of station ids.
     master_station_id : int
         ID of master station.
@@ -109,7 +108,7 @@ def get_connected_pairs(
     slave_station_ids : list[int]
         IDs of slave stations.
     pair_ids : bidict[int, frozenset]
-        Key : ID of station.
+        Key : ID of pair.
         Value : Pair of station ids.
 
     Returns
@@ -130,6 +129,57 @@ def get_connected_pairs(
     ]
 
     return filtered_pair_ids
+
+
+def get_direction_ids_by_filter(
+    master_station_id: int,
+    slave_station_ids: list[int],
+    direction: DirectionEnum,
+    direction_ids: bidict[int, Direction],
+) -> list[int]:
+    """Get ids of directions where the given master station and slave stations are involved and are communicating in specified direcion.
+
+    Parameters
+    ----------
+    master_station_id : int
+        ID of master station.
+    slave_station_ids : list[int]
+        IDs of slave stations.
+    direction : DirectionEnum
+        Direction used for filtering.
+    direction_ids : bidict[int, Direction]
+        Key : ID of direction.
+        Value : Pair of station ids. Source and destination.
+        Direction does matter.
+
+    Returns
+    -------
+    list[int]
+        IDs of directions with specified filters applied.
+    """
+
+    # ids of directions where src=master and dst=slave
+    m2s_ids: list[int] = [
+        direction_id
+        for direction_id, (src, dst) in direction_ids.items()
+        if src == master_station_id and dst in slave_station_ids
+    ]
+
+    s2m_ids: list[int] = [
+        direction_id
+        for direction_id, (src, dst) in direction_ids.items()
+        if dst == master_station_id and src in slave_station_ids
+    ]
+
+    match direction:
+        case DirectionEnum.BOTH:
+            return m2s_ids + s2m_ids
+        case DirectionEnum.M2S:
+            return m2s_ids
+        case DirectionEnum.S2M:
+            return s2m_ids
+        case _:
+            return []
 
 
 # endregion

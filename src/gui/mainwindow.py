@@ -42,7 +42,7 @@ from gui.components import (
     ChangeIntervalDialog,
     ChangeDirectionDialog,
 )
-from dsmanipulator.utils import Direction, Station, FileColumnNames
+from dsmanipulator.utils import Direction, Station, FileColumnNames, DirectionEnum
 
 
 class MainWindow(QMainWindow):
@@ -74,11 +74,11 @@ class MainWindow(QMainWindow):
         Key : ID of station.
         Value : Station.
     pair_ids : bidict[int, frozenset]
-        Key : ID of station.
+        Key : ID of pair.
         Value : Pair of station ids.
         Direction does not matter.
     direction_ids : bidict[int, Direction]
-        Key : ID of station.
+        Key : ID of direction.
         Value : Pair of station ids. Source and destination.
         Direction does matter.
 
@@ -102,6 +102,7 @@ class MainWindow(QMainWindow):
         self.resample_rate: pd.Timedelta = pd.Timedelta(minutes=5)
         self.og_cols: list[str]
         self.attribute_name: str = None
+        self.direction: DirectionEnum = DirectionEnum.BOTH  # TODO doc
         self.start_dt: datetime  # TODO doc
         self.end_dt: datetime
         self.file_path: str
@@ -138,6 +139,7 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, original_df_tab.update_model)
         self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, original_df_tab.update_model)
         self.event_handler.subscribe(EventType.INTERVAL_CHANGED, original_df_tab.update_model)
+        self.event_handler.subscribe(EventType.DIRECTION_CHANGED, original_df_tab.update_model)
         # TODO direction and interval
         tabs.addTab(original_df_tab, "Original Dataframe")
 
@@ -201,8 +203,13 @@ class MainWindow(QMainWindow):
         """Working dataframe with applied user filters."""
         if self.df_working is not None:
             filtered_pair_ids = dsa.get_connected_pairs(self.master_station_id, self.slave_station_ids, self.pair_ids)
+            filtered_direction_ids = dsa.get_direction_ids_by_filter(
+                self.master_station_id, self.slave_station_ids, self.direction, self.direction_ids
+            )
+
             return self.df_working[
                 (self.df_working[self.fcn.pair_id].isin(filtered_pair_ids))
+                & (self.df_working[self.fcn.direction_id].isin(filtered_direction_ids))
                 & (self.df_working[self.fcn.timestamp].between(self.start_dt, self.end_dt))
             ]  # TODO filter other params
         else:
@@ -315,14 +322,12 @@ class MainWindow(QMainWindow):
 
     def change_direction(self) -> None:
         if self.df_working is not None:
-            # dlg = ChangeDirectionDialog(
-            #     # TODO
-            # )
-            # if dlg.exec():
-            # TODO self.direction =
+            dlg = ChangeDirectionDialog(og_direction=self.direction, parent=self)
 
-            # self.event_handler.notify(EventType.DIRECTION_CHANGED, self.event_data)
-            pass
+            if dlg.exec():
+                self.direction = dlg.get_direction()
+
+                self.event_handler.notify(EventType.DIRECTION_CHANGED, self.event_data)
         else:
             LoadWarningMessageBox(self).exec()
 
