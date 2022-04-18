@@ -32,6 +32,52 @@ def get_df_time_span(df: pd.DataFrame, fcn: FileColumnNames) -> pd.Timedelta:
     return df[fcn.timestamp].iloc[-1] - df[fcn.timestamp].iloc[0]
 
 
+def get_attribute_stats(
+    df: pd.DataFrame, fcn: FileColumnNames, attribute_name: str, resample_rate: pd.Timedelta
+) -> pd.DataFrame:
+    tmpdf = df.loc[:, [fcn.timestamp, attribute_name]]
+
+    tmpdf = dsc.convert_to_timeseries(tmpdf, fcn)
+    tmpdf = dsc.expand_values_to_columns(tmpdf, attribute_name)
+    tmpdf = tmpdf.resample(resample_rate).sum()
+    tmpdf = tmpdf.rename(columns={og: og.lstrip(f"{attribute_name}:") for og in tmpdf.columns})
+
+    data = []
+    for attribute_value in tmpdf.columns:
+        mean = tmpdf[attribute_value].mean()
+        std = tmpdf[attribute_value].std()
+
+        row = []
+        row.append(attribute_value)
+        row.append(mean)
+        row.append(std)
+        row.append(tmpdf[attribute_value].var())
+        row.append(tmpdf[attribute_value].quantile(q=0.25))
+        row.append(tmpdf[attribute_value].median())
+        row.append(tmpdf[attribute_value].quantile(q=0.75))
+        row.append(mean - 3 * std)
+        row.append(mean + 3 * std)
+        row.append(len(tmpdf[attribute_value].loc[lambda x: ~x.between(mean - 3 * std, mean + 3 * std)]))
+
+        data.append(row)
+
+    return pd.DataFrame(
+        data,
+        columns=[
+            "Attribute value",
+            "Mean",
+            "Standard deviation",
+            "Variance",
+            "Quantile 25%",
+            "Median",
+            "Quantile 75%",
+            "Minus 3 sigma",
+            "Plus 3 sigma",
+            "Values out of 3 sigma",
+        ],
+    )
+
+
 # endregion
 
 
@@ -257,6 +303,9 @@ def plot_slaves(
     fcn: FileColumnNames,
     axes: Axes,
     resample_rate: pd.Timedelta,
+    master_station_id: int,
+    station_ids: bidict[int, Station],
+    pair_ids: bidict[int, frozenset],
 ) -> None:
     #     # TODO doc
 
@@ -268,6 +317,15 @@ def plot_slaves(
     # filter only timestamp and expanded columns
     tmpdf = tmpdf[[fcn.timestamp] + expanded_cols]
 
+    # rename columns to create legend
+    new_col_names = {}
+    for old_col_name in expanded_cols:
+        x, y = pair_ids[int(old_col_name.rsplit(":", 1)[1])]
+        slave_station_id = x if master_station_id == y else y
+        new_col_names[old_col_name] = str(station_ids[slave_station_id])
+
+    tmpdf.rename(columns=new_col_names, inplace=True)
+
     tmpdf = dsc.convert_to_timeseries(tmpdf, fcn)
     tmpdf = tmpdf.resample(resample_rate).sum()
 
@@ -276,7 +334,7 @@ def plot_slaves(
 
     axes.legend([], [], frameon=False)
 
-    sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=axes, legend=None)
+    sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=axes)
 
 
 def plot_attribute_values(

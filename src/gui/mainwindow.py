@@ -166,16 +166,20 @@ class MainWindow(QMainWindow):
         tabs.addTab(pair_plots_tab, "Communication pairs")
 
         # TAB 4 #
-        slave_plots_tab = SlavesPlotTab(self.actions["Select master station"], self)  # TODO delete first param
+        slave_plots_tab = SlavesPlotTab(self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, slave_plots_tab.update_plots)
         self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, slave_plots_tab.update_plots)
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, slave_plots_tab.update_plots)
+        self.event_handler.subscribe(EventType.DIRECTION_CHANGED, slave_plots_tab.update_plots)
+        self.event_handler.subscribe(EventType.INTERVAL_CHANGED, slave_plots_tab.update_plots)
         tabs.addTab(slave_plots_tab, "Slave communication")
 
         # TAB 5 #
         time_frame_view_tab = TimeFrameViewTab(self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, time_frame_view_tab.update_model)
         self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, time_frame_view_tab.update_model)
+        self.event_handler.subscribe(EventType.DIRECTION_CHANGED, time_frame_view_tab.update_model)
+        self.event_handler.subscribe(EventType.INTERVAL_CHANGED, time_frame_view_tab.update_model)
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, time_frame_view_tab.update_model)
         self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, time_frame_view_tab.update_model)
         tabs.addTab(time_frame_view_tab, "Time frame view")
@@ -184,6 +188,8 @@ class MainWindow(QMainWindow):
         attribute_stats_tab = AttributeStatsTab(self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, attribute_stats_tab.update_tab)
         self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, attribute_stats_tab.update_tab)
+        self.event_handler.subscribe(EventType.DIRECTION_CHANGED, attribute_stats_tab.update_tab)
+        self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, attribute_stats_tab.update_tab)
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, attribute_stats_tab.update_tab)
         self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, attribute_stats_tab.update_tab)
         tabs.addTab(attribute_stats_tab, "Attribute stats")

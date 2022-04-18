@@ -19,8 +19,9 @@ class TimeFrameViewTab(QTableView):
         super().__init__(parent)
 
         self.df_model: DataFrameModel
-        self.horizontalHeader().setStretchLastSection(True)
+
         self.setAlternatingRowColors(True)
+        self.setSortingEnabled(True)
         self.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
 
     def update_model(self, data: EventData) -> None:
