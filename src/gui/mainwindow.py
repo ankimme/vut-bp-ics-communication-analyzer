@@ -93,7 +93,7 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("ICS Analyzer")
-        self.setMinimumSize(800, 500)
+        self.setMinimumSize(800, 600)
         self.setFont(QFont("Monospace"))
 
         self.actions = self.create_actions()
@@ -161,8 +161,8 @@ class MainWindow(QMainWindow):
 
         pair_plots_tab = PairPlotsTab(self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, pair_plots_tab.update_plots)
-        self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, pair_plots_tab.update_plots)
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, pair_plots_tab.update_plots)
+        self.event_handler.subscribe(EventType.INTERVAL_CHANGED, pair_plots_tab.update_plots)
         tabs.addTab(pair_plots_tab, "Communication pairs")
 
         # TAB 4 #
@@ -207,7 +207,13 @@ class MainWindow(QMainWindow):
 
     @property
     def df_filtered(self) -> pd.DataFrame:
-        """Working dataframe with applied user filters."""
+        """Working dataframe with applied user filters.
+
+        Filtered by:
+        - Selected master and slaves
+        - Direction
+        - Interval
+        """
         if self.df_working is not None:
             filtered_pair_ids = dsa.get_connected_pairs(self.master_station_id, self.slave_station_ids, self.pair_ids)
 

@@ -80,7 +80,7 @@ class StatsTab(QWidget):
 
         # UNIQUE VALUES DIALOG #
 
-        # QDialog -> layout -> QScrollArea -> QWidget -> layout -> all the widgets you have on it now.
+        # QDialog -> layout -> QScrollArea -> QWidget -> layout -> content widgets
 
         self.unique_values_dialog = QDialog()
         self.unique_values_dialog.setWindowTitle("Unique values of attributes")
@@ -167,13 +167,18 @@ class StatsTab(QWidget):
         self.work_stat_widgets["Unique values"].set_value(s)
         self.unique_values_button.setEnabled(True)
 
-        self.work_stat_widgets["Start time"].set_value(
-            data.df_filtered[data.fcn.timestamp].iloc[0].strftime("%d %h %Y %H:%M:%S.%f")[:-4]
-        )
-        self.work_stat_widgets["End time"].set_value(
-            data.df_filtered[data.fcn.timestamp].iloc[-1].strftime("%d %h %Y %H:%M:%S.%f")[:-4]
-        )
-        self.work_stat_widgets["Time span"].set_value(dsa.get_df_time_span(data.df_filtered, data.fcn))
+        if len(data.df_filtered.index) > 0:
+            self.work_stat_widgets["Start time"].set_value(
+                data.df_filtered[data.fcn.timestamp].iloc[0].strftime("%d %h %Y %H:%M:%S.%f")[:-4]
+            )
+            self.work_stat_widgets["End time"].set_value(
+                data.df_filtered[data.fcn.timestamp].iloc[-1].strftime("%d %h %Y %H:%M:%S.%f")[:-4]
+            )
+            self.work_stat_widgets["Time span"].set_value(dsa.get_df_time_span(data.df_filtered, data.fcn))
+        else:
+            self.work_stat_widgets["Start time"].set_value("")
+            self.work_stat_widgets["End time"].set_value("")
+            self.work_stat_widgets["Time span"].set_value("")
 
     @pyqtSlot()
     def show_unique_values(self):

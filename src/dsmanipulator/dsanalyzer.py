@@ -197,7 +197,7 @@ def plot_pair_flow(
     direction_ids: bidict[int, Direction],
     resample_rate: pd.Timedelta,
 ) -> None:
-    #     # TODO doc
+    # TODO doc
     assert all(col in df.columns for col in [fcn.timestamp, fcn.pair_id, fcn.direction_id])
 
     # filter original dataframe and expand values
@@ -229,8 +229,8 @@ def plot_pair_flow(
     tmpdf.insert(0, "Sum", 0)
     tmpdf["Sum"] = tmpdf.sum(axis=1)
 
-    # axes.set_xlabel("Time")
-    # axes.set_ylabel("Packet count")
+    axes.set_xlabel("Time")
+    axes.set_ylabel("Packet count")
     # axes.set_title("Packet count in time")
     axes.grid(True)
 
