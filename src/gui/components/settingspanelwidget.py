@@ -1,11 +1,20 @@
-# TODO Doc
+"""A simple infopanel that shows user settings.
+
+Author
+------
+Andrea Chimenti
+
+Date
+----
+April 2022
+"""
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QWidget, QGridLayout
 
 from gui.components import InfoLabel
 from gui.utils import EventData
+from dsmanipulator.utils import DirectionEnum
 
 
 class SettingsPanelWidget(QWidget):
@@ -19,7 +28,6 @@ class SettingsPanelWidget(QWidget):
 
         for setting in setting_names:
             setting_label = InfoLabel(setting)
-            setting_label.setFont(QFont("Monospace"))
             self.stat_widgets[setting] = setting_label
 
         self.grid_layout.addWidget(self.stat_widgets["Master Station"], 0, 0, Qt.AlignmentFlag.AlignLeft)
@@ -32,9 +40,27 @@ class SettingsPanelWidget(QWidget):
         self.setLayout(self.grid_layout)
 
     def update_panel(self, data: EventData) -> None:
+        """Update values of infopanel shown to user.
+
+        Parameters
+        ----------
+        data : EventData
+            Data of update event.
+        """
+        match data.direction:
+            case DirectionEnum.BOTH:
+                direction = "Both"
+            case DirectionEnum.M2S:
+                direction = "Master to slave"
+            case DirectionEnum.S2M:
+                direction = "Slave to master"
+
+        ds = data.start_dt.strftime("%d %h %H:%M:%S.%f")[:-4]
+        de = data.end_dt.strftime("%d %h %H:%M:%S.%f")[:-4]
+
         self.stat_widgets["Master Station"].set_value(str(data.station_ids[data.master_station_id]))
         self.stat_widgets["Slaves count"].set_value(len(data.slave_station_ids))
         self.stat_widgets["Resample rate"].set_value(str(data.resample_rate))
         self.stat_widgets["Attribute"].set_value(data.attribute_name)
-        self.stat_widgets["Direction"].set_value("PLACEHOLDER TODO")
-        self.stat_widgets["Interval"].set_value("PLACEHOLDER TODO")
+        self.stat_widgets["Direction"].set_value(direction)
+        self.stat_widgets["Interval"].set_value(f"{ds} -- {de}")

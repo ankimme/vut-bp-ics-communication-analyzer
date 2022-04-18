@@ -11,13 +11,14 @@ Date
 March 2022
 """
 
+from datetime import datetime
 from enum import Enum, auto
 from typing import Callable
 from dataclasses import dataclass
 from bidict import bidict
 import pandas as pd
 
-from dsmanipulator.utils import FileColumnNames, Direction, Station
+from dsmanipulator.utils import FileColumnNames, Direction, Station, DirectionEnum
 
 
 # TODO doc
@@ -32,6 +33,9 @@ class EventData:
     file_path: str
     resample_rate: pd.Timedelta
     attribute_name: str
+    direction: DirectionEnum
+    start_dt: datetime
+    end_dt: datetime
     station_ids: bidict[int, Station]
     pair_ids: bidict[int, frozenset]
     direction_ids: bidict[int, Direction]

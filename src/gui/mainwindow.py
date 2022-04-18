@@ -24,7 +24,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QWidget,
 )
-from PyQt6.QtGui import QIcon, QAction
+from PyQt6.QtGui import QIcon, QAction, QFont
 
 from dsmanipulator import dsloader as dsl
 from dsmanipulator import dscreator as dsc
@@ -94,6 +94,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("ICS Analyzer")
         self.setMinimumSize(800, 500)
+        self.setFont(QFont("Monospace"))
 
         self.actions = self.create_actions()
         self.df_working: pd.DataFrame = None
@@ -121,6 +122,8 @@ class MainWindow(QMainWindow):
 
         # SETTINGS PANEL
 
+        main_layout.addWidget(QLabel("APPLIED SETTINGS"))
+
         settings_panel = SettingsPanelWidget(parent=self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, settings_panel.update_panel)
         self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, settings_panel.update_panel)
@@ -138,16 +141,20 @@ class MainWindow(QMainWindow):
         original_df_tab = OriginalDfTab(self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, original_df_tab.update_model)
         self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, original_df_tab.update_model)
-        self.event_handler.subscribe(EventType.INTERVAL_CHANGED, original_df_tab.update_model)
         self.event_handler.subscribe(EventType.DIRECTION_CHANGED, original_df_tab.update_model)
-        # TODO direction and interval
+        self.event_handler.subscribe(EventType.INTERVAL_CHANGED, original_df_tab.update_model)
         tabs.addTab(original_df_tab, "Original Dataframe")
 
         # TAB 2 #
 
         stats_tab = StatsTab(self)
-        self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, stats_tab.update_stats)
-        self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, stats_tab.update_master_station)
+        self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, stats_tab.update_og_stats)
+
+        self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, stats_tab.update_work_stats)
+        self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, stats_tab.update_work_stats)
+        self.event_handler.subscribe(EventType.DIRECTION_CHANGED, stats_tab.update_work_stats)
+        self.event_handler.subscribe(EventType.INTERVAL_CHANGED, stats_tab.update_work_stats)
+
         tabs.addTab(stats_tab, "General statistics")
 
         # TAB 3 #
@@ -203,6 +210,7 @@ class MainWindow(QMainWindow):
         """Working dataframe with applied user filters."""
         if self.df_working is not None:
             filtered_pair_ids = dsa.get_connected_pairs(self.master_station_id, self.slave_station_ids, self.pair_ids)
+
             filtered_direction_ids = dsa.get_direction_ids_by_filter(
                 self.master_station_id, self.slave_station_ids, self.direction, self.direction_ids
             )
@@ -226,6 +234,9 @@ class MainWindow(QMainWindow):
             self.file_path,
             self.resample_rate,
             self.attribute_name,
+            self.direction,
+            self.start_dt,
+            self.end_dt,
             self.station_ids,
             self.pair_ids,
             self.direction_ids,
