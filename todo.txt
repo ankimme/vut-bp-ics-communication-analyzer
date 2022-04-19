@@ -78,14 +78,29 @@ reagovat na event u timeframe view
 chang time limit
 
 
-na ose y stejne meritko
 u komunikacnich dvojic udelat lepsi legendy
 proc zacina tak nahore
-! rozhodit grafy na smery !
-! tabulku stredni hodnota, odchylka, kvatrily !
 
-start end nastaveni posuvnikem?
+
+
 
 inter arrival time kdyz bude cas
 
 hledat stabilitu hodnot, set druhy s periodicitou
+
+
+
+zminit v uvodu kazdou podkapitolku
+
+
+datum 1900 a rucni nastaven
+
+u komunikace se slavy dat tri grafy pro kazdy smer 
+
+zvyraznineni uzkych hodnot
+
+p5eindexovani
+
+volby atributu
+
+dat do statistik inter arrival time

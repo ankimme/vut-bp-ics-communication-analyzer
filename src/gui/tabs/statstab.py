@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 from dsmanipulator import dsanalyzer as dsa
 from gui.components import InfoLabel
 from gui.utils import EventData
+from dsmanipulator.utils import DirectionEnum
 
 
 class StatsTab(QWidget):
@@ -42,10 +43,12 @@ class StatsTab(QWidget):
             "Start time",
             "End time",
             "Time span",
-            "Row count",
+            "Total packets",
+            "Master to slave packets",
+            "Slave to master packets",
+            "Pairs count",
             "File name",
             "Column count",
-            "Pairs count",
             "Column types",
         ]
 
@@ -67,8 +70,10 @@ class StatsTab(QWidget):
             "Start time",
             "End time",
             "Time span",
-            "Row count",
-            "Unique values",
+            "Total packets",
+            "Master to slave packets",
+            "Slave to master packets",
+            "Unique values of attributes",
         ]
 
         work_df_layout = QVBoxLayout()
@@ -113,7 +118,7 @@ class StatsTab(QWidget):
         button_hbox.addWidget(self.unique_values_button)
         button_hbox.addStretch(1)
 
-        work_df_layout.insertLayout(5, button_hbox)
+        work_df_layout.insertLayout(7, button_hbox)
 
         work_df_layout.addStretch(1)
 
@@ -127,8 +132,31 @@ class StatsTab(QWidget):
         self.setLayout(grid_layout)
 
     def update_og_stats(self, data: EventData) -> None:
+        total_packet_count = len(data.df_working.index)
+        m2s_packet_count = dsa.get_packet_count_by_direction(
+            data.df_working,
+            data.fcn,
+            data.master_station_id,
+            data.slave_station_ids,
+            data.direction_ids,
+            DirectionEnum.M2S,
+        )
+        s2m_packet_count = dsa.get_packet_count_by_direction(
+            data.df_working,
+            data.fcn,
+            data.master_station_id,
+            data.slave_station_ids,
+            data.direction_ids,
+            DirectionEnum.S2M,
+        )
+        m2s_percentage = m2s_packet_count / total_packet_count * 100 if total_packet_count > 0 else 0
+        s2m_percentage = s2m_packet_count / total_packet_count * 100 if total_packet_count > 0 else 0
+
+        self.og_stat_widgets["Total packets"].set_value(total_packet_count)
+        self.og_stat_widgets["Master to slave packets"].set_value(f"{m2s_packet_count} ({m2s_percentage:.2f}%)")
+        self.og_stat_widgets["Slave to master packets"].set_value(f"{s2m_packet_count} ({s2m_percentage:.2f}%)")
+
         self.og_stat_widgets["File name"].set_value(os.path.basename(data.file_path))
-        self.og_stat_widgets["Row count"].set_value(len(data.df_og.index))
         self.og_stat_widgets["Column count"].set_value(len(data.df_og.columns))
         self.og_stat_widgets["Start time"].set_value(
             data.df_og[data.fcn.timestamp].iloc[0].strftime("%d %h %Y %H:%M:%S.%f")[:-4]
@@ -136,7 +164,7 @@ class StatsTab(QWidget):
         self.og_stat_widgets["End time"].set_value(
             data.df_og[data.fcn.timestamp].iloc[-1].strftime("%d %h %Y %H:%M:%S.%f")[:-4]
         )
-        self.og_stat_widgets["Time span"].set_value(dsa.get_df_time_span(data.df_og, data.fcn))
+        self.og_stat_widgets["Time span"].set_value(dsa.get_df_time_span(data.df_working, data.fcn))
         self.og_stat_widgets["Pairs count"].set_value(len(data.pair_ids))
 
         s = "\n"
@@ -148,7 +176,28 @@ class StatsTab(QWidget):
         self.og_stat_widgets["Column types"].set_value(s)
 
     def update_work_stats(self, data: EventData) -> None:
-        self.work_stat_widgets["Row count"].set_value(len(data.df_filtered.index))
+        total_packet_count = len(data.df_filtered.index)
+        m2s_packet_count = dsa.get_packet_count_by_direction(
+            data.df_filtered,
+            data.fcn,
+            data.master_station_id,
+            data.slave_station_ids,
+            data.direction_ids,
+            DirectionEnum.M2S,
+        )
+        s2m_packet_count = dsa.get_packet_count_by_direction(
+            data.df_filtered,
+            data.fcn,
+            data.master_station_id,
+            data.slave_station_ids,
+            data.direction_ids,
+            DirectionEnum.S2M,
+        )
+        m2s_percentage = m2s_packet_count / total_packet_count * 100 if total_packet_count > 0 else 0
+        s2m_percentage = s2m_packet_count / total_packet_count * 100 if total_packet_count > 0 else 0
+        self.work_stat_widgets["Total packets"].set_value(total_packet_count)
+        self.work_stat_widgets["Master to slave packets"].set_value(f"{m2s_packet_count} ({m2s_percentage:.2f}%)")
+        self.work_stat_widgets["Slave to master packets"].set_value(f"{s2m_packet_count} ({s2m_percentage:.2f}%)")
 
         for i in reversed(range(self.content_layout.count())):
             self.content_layout.itemAt(i).widget().setParent(None)
@@ -164,7 +213,7 @@ class StatsTab(QWidget):
             label = QLabel()
             label.setText(f"<b>{attribute}</b><br>{'<br>'.join(str(x) for x in unique_values)}")
             self.content_layout.addWidget(label)
-        self.work_stat_widgets["Unique values"].set_value(s)
+        self.work_stat_widgets["Unique values of attributes"].set_value(s)
         self.unique_values_button.setEnabled(True)
 
         if len(data.df_filtered.index) > 0:

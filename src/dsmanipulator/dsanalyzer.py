@@ -9,7 +9,7 @@ from dsmanipulator.utils import Direction, FileColumnNames, Station, DirectionEn
 
 from bidict import bidict
 
-# region Stats
+# region Dataframe Insights
 
 
 def get_df_time_span(df: pd.DataFrame, fcn: FileColumnNames) -> pd.Timedelta:
@@ -78,10 +78,18 @@ def get_attribute_stats(
     )
 
 
-# endregion
+def get_packet_count_by_direction(
+    df: pd.DataFrame,
+    fcn: FileColumnNames,
+    master_station_id: int,
+    slave_station_ids: list[int],
+    direction_ids: bidict[int, Direction],
+    direction: DirectionEnum,
+) -> int:
 
+    direction_ids = get_direction_ids_by_filter(master_station_id, slave_station_ids, direction, direction_ids)
 
-# region Dataframe Insights
+    return len(df[df[fcn.direction_id].isin(direction_ids)])
 
 
 def detect_master_staion(
