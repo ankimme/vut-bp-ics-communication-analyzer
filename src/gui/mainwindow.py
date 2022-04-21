@@ -231,7 +231,7 @@ class MainWindow(QMainWindow):
                 (self.df_working[self.fcn.pair_id].isin(filtered_pair_ids))
                 & (self.df_working[self.fcn.direction_id].isin(filtered_direction_ids))
                 & (self.df_working[self.fcn.timestamp].between(self.start_dt, self.end_dt))
-            ]  # TODO filter other params
+            ]
         else:
             return None
 
@@ -402,6 +402,10 @@ class MainWindow(QMainWindow):
         Also create or update attributes used in the rest of the code of the app.
         """
         self.og_cols = self.df_working.columns
+
+        self.direction = DirectionEnum.BOTH
+        self.attribute_name = None
+        self.resample_rate = pd.Timedelta(minutes=5)
 
         dsc.add_relative_days(self.df_working, self.fcn, inplace=True)
 

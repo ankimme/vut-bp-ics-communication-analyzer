@@ -359,65 +359,65 @@ def add_inter_arrival_time_ad(df: pd.DataFrame, fcn: FileColumnNames, inplace: b
     return df
 
 
-def add_inter_arrival_time_sd(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool = False) -> pd.DataFrame:
-    """Add interArrivalTimeSD (single direction) column to dataframe.
+# def add_inter_arrival_time_sd(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool = False) -> pd.DataFrame:
+#     """Add interArrivalTimeSD (single direction) column to dataframe.
 
-    Use only packets in same direction.
+#     Use only packets in same direction.
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input dataframe.
-    fcn : FileColumnNames
-        Real names of predefined columns.
-    inplace : bool, optional
-        Whether to perform the operation in place on the data.
-        by default False
+#     Parameters
+#     ----------
+#     df : pd.DataFrame
+#         Input dataframe.
+#     fcn : FileColumnNames
+#         Real names of predefined columns.
+#     inplace : bool, optional
+#         Whether to perform the operation in place on the data.
+#         by default False
 
-    Returns
-    -------
-    pd.DataFrame
-        Dataframe with interArrivalTimeSD column.
+#     Returns
+#     -------
+#     pd.DataFrame
+#         Dataframe with interArrivalTimeSD column.
 
-    Notes
-    -----
-    Should be called after add_communication_direction()
-    """
-    assert all(col in df.columns for col in [fcn.rel_time, "masterToSlave"])
+#     Notes
+#     -----
+#     Should be called after add_communication_direction()
+#     """
+#     assert all(col in df.columns for col in [fcn.rel_time, "masterToSlave"])
 
-    if not inplace:
-        df = df.copy()
+#     if not inplace:
+#         df = df.copy()
 
-    # M2S inter arrival times
-    # filter only relative times of packets in master to slave direction
-    times = df.loc[df["masterToSlave"], fcn.rel_time].values
-    shifted = np.concatenate((times[0:1], times[:-1]))
-    m2s = times - shifted
+#     # M2S inter arrival times
+#     # filter only relative times of packets in master to slave direction
+#     times = df.loc[df["masterToSlave"], fcn.rel_time].values
+#     shifted = np.concatenate((times[0:1], times[:-1]))
+#     m2s = times - shifted
 
-    # S2M inter arrival times
-    times = df.loc[~df["masterToSlave"], fcn.rel_time].values
-    shifted = np.concatenate((times[0:1], times[:-1]))
-    s2m = times - shifted
+#     # S2M inter arrival times
+#     times = df.loc[~df["masterToSlave"], fcn.rel_time].values
+#     shifted = np.concatenate((times[0:1], times[:-1]))
+#     s2m = times - shifted
 
-    assert len(m2s) + len(s2m) == len(df.index)
+#     assert len(m2s) + len(s2m) == len(df.index)
 
-    # get masks
-    mask_m2s = df["masterToSlave"].values
-    mask_s2m = np.invert(mask_m2s)
-    df_len = len(df.index)
+#     # get masks
+#     mask_m2s = df["masterToSlave"].values
+#     mask_s2m = np.invert(mask_m2s)
+#     df_len = len(df.index)
 
-    # get indices based on masks
-    m2s_indices = np.nonzero(mask_m2s)
-    s2m_indices = np.nonzero(mask_s2m)
+#     # get indices based on masks
+#     m2s_indices = np.nonzero(mask_m2s)
+#     s2m_indices = np.nonzero(mask_s2m)
 
-    # fill resulting array
-    result = np.empty(df_len)
-    result[m2s_indices] = m2s
-    result[s2m_indices] = s2m
+#     # fill resulting array
+#     result = np.empty(df_len)
+#     result[m2s_indices] = m2s
+#     result[s2m_indices] = s2m
 
-    df["interArrivalTimeSD"] = result
+#     df["interArrivalTimeSD"] = result
 
-    return df
+#     return df TODO delete
 
 
 def add_communication_id(

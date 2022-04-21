@@ -1,5 +1,7 @@
 from matplotlib.dates import DateFormatter, AutoDateLocator
 from matplotlib.axes import Axes
+
+import numpy as np
 import pandas as pd
 import seaborn as sns
 
@@ -76,6 +78,70 @@ def get_attribute_stats(
             "Values out of 3 sigma",
         ],
     )
+
+
+def get_iat_stats_whole_df(df: pd.DataFrame, fcn: FileColumnNames):
+    if len(df.index) == 0 or fcn.rel_time not in df.columns:
+        return 0, 0, 0, 0
+
+    # convert relative time to numpy array
+    times = df[fcn.rel_time].values
+
+    # create shifted array (first emlement is doubled and the rest is shifted right)
+    shifted = np.concatenate((times[0:1], times[:-1]))
+
+    # compute inter arrival time
+    iats = times - shifted
+
+    # drop first value because it is always zero
+    iats = iats[1:]
+
+    # np.savetxt("iats_whole_df.txt", iats)
+
+    # mean, median, min, max
+    return iats.mean(), np.median(iats), iats.min(), iats.max()
+
+
+def get_iat_stats_filtered(
+    df: pd.DataFrame,
+    fcn: FileColumnNames,
+    master_station_id: int,
+    slave_station_ids: list[int],
+    pair_ids: bidict[int, frozenset],
+) -> tuple[int, int, int, int]:
+
+    if len(df.index) == 0 or fcn.rel_time not in df.columns:
+        return 0, 0, 0, 0
+
+    all_iats = np.empty(0)
+
+    for slave_id in slave_station_ids:
+        pair_id = pair_ids.inv[frozenset({master_station_id, slave_id})]
+
+        tmpdf = df[df[fcn.pair_id] == pair_id]
+
+        # skip empty communications
+        if len(tmpdf.index) == 0:
+            continue
+
+        # convert relative time to numpy array
+        times = df[fcn.rel_time].values
+
+        # create shifted array (first emlement is doubled and the rest is shifted right)
+        shifted = np.concatenate((times[0:1], times[:-1]))
+
+        # compute inter arrival time
+        new_iats = times - shifted
+
+        # drop first value because it is always zero
+        new_iats = new_iats[1:]
+
+        all_iats = np.concatenate((all_iats, new_iats))
+
+    # np.savetxt("iats_filtered.txt", all_iats)
+
+    # mean, median, min, max
+    return all_iats.mean(), np.median(all_iats), all_iats.min(), all_iats.max()
 
 
 def get_packet_count_by_direction(
