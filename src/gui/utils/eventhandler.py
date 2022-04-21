@@ -33,6 +33,7 @@ class EventData:
     file_path: str
     resample_rate: pd.Timedelta
     attribute_name: str
+    attribute_values: list[str | int | float]
     direction: DirectionEnum
     start_dt: datetime
     end_dt: datetime
@@ -52,6 +53,7 @@ class EventType(Enum):
     ATTRIBUTE_CHANGED = auto()
     DIRECTION_CHANGED = auto()
     INTERVAL_CHANGED = auto()
+    ATTRIBUTE_VALUES_CHANGED = auto()
 
 
 class EventHandler:

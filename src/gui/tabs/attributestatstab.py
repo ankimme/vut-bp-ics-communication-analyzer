@@ -1,5 +1,6 @@
 # TODO doc
 
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTableView
 from gui.components import MplCanvas
 from gui.utils import DataFrameModel, EventData
@@ -13,7 +14,10 @@ class AttributeStatsTab(QWidget):
         layout = QVBoxLayout()
 
         # CANVA
-        self.canvas = MplCanvas(width=6, height=4, dpi=100, parent=self)
+        self.canvas = MplCanvas(width=6, height=5, dpi=100, parent=self)
+        toolbar = NavigationToolbar2QT(self.canvas, self)
+
+        layout.addWidget(toolbar)
         layout.addWidget(self.canvas)
 
         # TABLE DATA
@@ -36,12 +40,15 @@ class AttributeStatsTab(QWidget):
         if data.attribute_name:
 
             self.canvas.axes.cla()
-            if len(data.df_filtered.index) == 0:
-                return
+            if len(data.df_filtered.index) > 0 and len(data.attribute_values) > 0:
 
-            dsa.plot_attribute_values(
-                data.df_filtered, data.fcn, self.canvas.axes, data.attribute_name, data.resample_rate
-            )
+                dsa.plot_attribute_values(
+                    data.df_filtered[data.df_filtered[data.attribute_name].isin(data.attribute_values)],
+                    data.fcn,
+                    data.attribute_name,
+                    data.resample_rate,
+                    self.canvas.axes,
+                )
 
             self.canvas.draw()
 

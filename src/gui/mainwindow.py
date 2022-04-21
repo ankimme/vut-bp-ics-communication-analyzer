@@ -38,7 +38,8 @@ from gui.components import (
     SelectSlavesDialog,
     ChangeResampleRateDialog,
     SelectAttributeDialog,
-    LoadWarningMessageBox,
+    SelectAttributeValuesDialog,
+    WarningMessageBox,
     ChangeIntervalDialog,
     ChangeDirectionDialog,
 )
@@ -103,6 +104,7 @@ class MainWindow(QMainWindow):
         self.resample_rate: pd.Timedelta = pd.Timedelta(minutes=5)
         self.og_cols: list[str]
         self.attribute_name: str = None
+        self.attribute_values: list[str | int | float] = []
         self.direction: DirectionEnum = DirectionEnum.BOTH  # TODO doc
         self.start_dt: datetime  # TODO doc
         self.end_dt: datetime
@@ -192,6 +194,7 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, attribute_stats_tab.update_tab)
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, attribute_stats_tab.update_tab)
         self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, attribute_stats_tab.update_tab)
+        self.event_handler.subscribe(EventType.ATTRIBUTE_VALUES_CHANGED, attribute_stats_tab.update_tab)
         tabs.addTab(attribute_stats_tab, "Attribute stats")
 
         main_layout.addWidget(tabs)
@@ -246,6 +249,7 @@ class MainWindow(QMainWindow):
             self.file_path,
             self.resample_rate,
             self.attribute_name,
+            self.attribute_values,
             self.direction,
             self.start_dt,
             self.end_dt,
@@ -325,7 +329,7 @@ class MainWindow(QMainWindow):
 
                 self.event_handler.notify(EventType.MASTER_SLAVES_CHANGED, self.event_data)
         else:
-            LoadWarningMessageBox(self).exec()
+            WarningMessageBox("Please load a CSV file before proceeding", self).exec()
 
     def change_slaves(self) -> None:
         """Open dialog for slave stations selection.
@@ -341,7 +345,7 @@ class MainWindow(QMainWindow):
 
                 self.event_handler.notify(EventType.MASTER_SLAVES_CHANGED, self.event_data)
         else:
-            LoadWarningMessageBox(self).exec()
+            WarningMessageBox("Please load a CSV file before proceeding", self).exec()
 
     def change_direction(self) -> None:
         if self.df_working is not None:
@@ -352,7 +356,7 @@ class MainWindow(QMainWindow):
 
                 self.event_handler.notify(EventType.DIRECTION_CHANGED, self.event_data)
         else:
-            LoadWarningMessageBox(self).exec()
+            WarningMessageBox("Please load a CSV file before proceeding", self).exec()
 
     def change_interval(self) -> None:
         if self.df_working is not None:
@@ -367,7 +371,7 @@ class MainWindow(QMainWindow):
                 self.start_dt, self.end_dt = dlg.get_new_interval()
                 self.event_handler.notify(EventType.INTERVAL_CHANGED, self.event_data)
         else:
-            LoadWarningMessageBox(self).exec()
+            WarningMessageBox("Please load a CSV file before proceeding", self).exec()
 
     def change_resample_rate(self) -> None:
 
@@ -378,7 +382,7 @@ class MainWindow(QMainWindow):
 
                 self.event_handler.notify(EventType.RESAMPLE_RATE_CHANGED, self.event_data)
         else:
-            LoadWarningMessageBox(self).exec()
+            WarningMessageBox("Please load a CSV file before proceeding", self).exec()
 
     def change_attribute_name(self) -> None:
 
@@ -388,9 +392,30 @@ class MainWindow(QMainWindow):
             if dlg.exec():
                 self.attribute_name = dlg.get_attribute_name()
 
+                # automatically select all
+                self.attribute_values = self.df_working[self.attribute_name].unique()
+
                 self.event_handler.notify(EventType.ATTRIBUTE_CHANGED, self.event_data)
         else:
-            LoadWarningMessageBox(self).exec()
+            WarningMessageBox("Please load a CSV file before proceeding", self).exec()
+
+    def select_attribute_values(self) -> None:
+
+        if self.df_working is not None:
+
+            if self.attribute_name is not None:
+
+                dlg = SelectAttributeValuesDialog(
+                    self.attribute_values, self.df_working[self.attribute_name].unique(), parent=self
+                )
+                if dlg.exec():
+                    self.attribute_values = dlg.get_attribute_values()
+
+                    self.event_handler.notify(EventType.ATTRIBUTE_VALUES_CHANGED, self.event_data)
+            else:
+                WarningMessageBox("Please select an attribute before proceeding", self).exec()
+        else:
+            WarningMessageBox("Please load a CSV file before proceeding", self).exec()
 
     # endregion
 
@@ -405,6 +430,7 @@ class MainWindow(QMainWindow):
 
         self.direction = DirectionEnum.BOTH
         self.attribute_name = None
+        self.attribute_values = []
         self.resample_rate = pd.Timedelta(minutes=5)
 
         dsc.add_relative_days(self.df_working, self.fcn, inplace=True)
@@ -499,6 +525,11 @@ class MainWindow(QMainWindow):
         name = "Change attribute"
         actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
         actions[name].triggered.connect(self.change_attribute_name)
+
+        # SELECT ATTRIBUTE VALUES #
+        name = "Select attribute values"
+        actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
+        actions[name].triggered.connect(self.select_attribute_values)
 
         # EXIT #
         name = "Exit"

@@ -59,6 +59,7 @@ def get_attribute_stats(
         row.append(tmpdf[attribute_value].quantile(q=0.75))
         row.append(mean - 3 * std)
         row.append(mean + 3 * std)
+        row.append((mean + 3 * std) - (mean - 3 * std))
         row.append(len(tmpdf[attribute_value].loc[lambda x: ~x.between(mean - 3 * std, mean + 3 * std)]))
 
         data.append(row)
@@ -75,6 +76,7 @@ def get_attribute_stats(
             "Quantile 75%",
             "Minus 3 sigma",
             "Plus 3 sigma",
+            "3 sigma interval size",
             "Values out of 3 sigma",
         ],
     )
@@ -412,7 +414,11 @@ def plot_slaves(
 
 
 def plot_attribute_values(
-    df: pd.DataFrame, fcn: FileColumnNames, axes: Axes, attribute_name: str, resample_rate: pd.Timedelta
+    df: pd.DataFrame,
+    fcn: FileColumnNames,
+    attribute_name: str,
+    resample_rate: pd.Timedelta,
+    axes: Axes,
 ):
 
     tmpdf = df.loc[:, [fcn.timestamp, attribute_name]]

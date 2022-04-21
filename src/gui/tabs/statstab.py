@@ -20,7 +20,7 @@ from gui.utils import EventData
 from dsmanipulator.utils import DirectionEnum
 
 
-class StatsTab(QWidget):
+class StatsTab(QScrollArea):
     def __init__(self, parent: QWidget = None) -> None:
         """TODO
 
@@ -31,6 +31,11 @@ class StatsTab(QWidget):
             Value : Assigned label.
         """
         super().__init__(parent)
+
+        self.setWidgetResizable(True)
+
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setStyleSheet("background-color: white;")
 
         grid_layout = QGridLayout()
         grid_layout.setColumnStretch(0, 1)
@@ -102,12 +107,12 @@ class StatsTab(QWidget):
 
         dialog_layout = QVBoxLayout()
 
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        dialog_layout.addWidget(scroll_area)
+        unique_values_dialog_scroll_area = QScrollArea()
+        unique_values_dialog_scroll_area.setWidgetResizable(True)
+        dialog_layout.addWidget(unique_values_dialog_scroll_area)
 
         q = QWidget()
-        scroll_area.setWidget(q)
+        unique_values_dialog_scroll_area.setWidget(q)
 
         self.content_layout = QVBoxLayout()
         q.setLayout(self.content_layout)
@@ -137,7 +142,9 @@ class StatsTab(QWidget):
         grid_layout.addLayout(og_df_layout, 1, 0)
         grid_layout.addLayout(work_df_layout, 1, 1)
 
-        self.setLayout(grid_layout)
+        parent_widget = QWidget(self)
+        parent_widget.setLayout(grid_layout)
+        self.setWidget(parent_widget)
 
     def update_og_stats(self, data: EventData) -> None:
         total_packet_count = len(data.df_working.index)
