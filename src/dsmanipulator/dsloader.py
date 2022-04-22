@@ -5,22 +5,20 @@ import pandas as pd
 from .utils.dataobjects import FileColumnNames
 
 
-def load_data(file_name: str, dtype: dict[str, str], dialect: csv.Dialect, row_limit: int = None) -> pd.DataFrame:
+def load_data(file_name: str, data_types: dict[str, str], dialect: csv.Dialect, row_limit: int = None) -> pd.DataFrame:
     # todo df must have 'srcIP', 'srcPort', 'dstIP', 'dstPort', 'TimeStamp'
     # todo TimeStamp ve fromatu format="%H:%M:%S.%f"
     # todo check if file exists
 
-    col_types = {k: v for k, v in dtype.items() if v != "datetime"}
-    date_time_columns = [k for k, v in dtype.items() if v == "datetime"]
+    col_types = {k: v for k, v in data_types.items() if v != "datetime"}
+    date_time_columns = [k for k, v in data_types.items() if v == "datetime"]
 
-    df = pd.read_csv(file_name, dialect=dialect, dtype=col_types, nrows=row_limit)
+    df = pd.read_csv(file_name, dialect=dialect, dtype=col_types, nrows=row_limit, na_values=[""])
 
     df = df.astype({k: "str" for k, v in col_types.items() if v == "object"})
 
     for col_name in date_time_columns:
         df[col_name] = pd.to_datetime(df[col_name])
-
-    
 
     # # TODO accept some Nones
     # if any(value is None for value in col_names.__dict__.values()):
@@ -145,7 +143,30 @@ def detect_columns(file_name: str, dialect: csv.Dialect, row_limit: int = 10000)
 
     df = pd.read_csv(file_name, dialect=dialect, nrows=row_limit, engine="python")
 
-    return df.dtypes.to_dict()
+    detected_cols = df.dtypes.to_dict()
+
+    predefined_types: dict[str, str] = {}
+    predefined_types["TimeStamp"] = "datetime"
+    predefined_types["Relative Time"] = "float"
+    predefined_types["srcIP"] = "object"
+    predefined_types["dstIP"] = "object"
+    predefined_types["srcPort"] = "Int64"
+    predefined_types["dstPort"] = "Int64"
+    predefined_types["ipLen"] = "Int64"
+    predefined_types["len"] = "Int64"
+    predefined_types["fmt"] = "object"
+    predefined_types["uType"] = "object"
+    predefined_types["asduType"] = "Int64"
+    predefined_types["numix"] = "Int64"
+    predefined_types["cot"] = "Int64"
+    predefined_types["oa"] = "Int64"
+    predefined_types["addr"] = "Int64"
+    predefined_types["ioa"] = "object"
+
+    # change the detected columns to a predefined type. the predefined types are optimal for the datasets provided with the bachelor thesis
+    detected_cols.update({k: v for k, v in predefined_types.items() if k in detected_cols.keys()})
+
+    return detected_cols
 
 
 def detect_datetime():

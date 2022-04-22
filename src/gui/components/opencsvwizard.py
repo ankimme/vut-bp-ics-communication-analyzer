@@ -411,10 +411,10 @@ class PageSetDataTypes(QWizardPage):
 
             if self.groups["src_port"].checkedButton():
                 assert (
-                    self.wizard().col_types_by_user[self.wizard().fcn.src_port].currentText() == "int"
+                    self.wizard().col_types_by_user[self.wizard().fcn.src_port].currentText() == "Int64"
                 ), "Source port column should be of integer type"
                 assert (
-                    self.wizard().col_types_by_user[self.wizard().fcn.dst_port].currentText() == "int"
+                    self.wizard().col_types_by_user[self.wizard().fcn.dst_port].currentText() == "Int64"
                 ), "Destination port column should be of integer type"
 
             # try loading the csv with given settings
@@ -442,13 +442,16 @@ class TypeComboBox(QComboBox):
     """ComboBox used for selecting data type of column.
 
     Show 'string' instead of 'object'. But return 'object'.
+    Show 'int' instead of 'Int64'. But return 'Int64'.
     """
 
     def __init__(self, preselected_type, parent: QWidget = None) -> None:
         super().__init__(parent)
         if preselected_type == "object":
             preselected_type = "string"
-        types = ["string", "int", "float", "bool", "datetime", "category"]
+        if preselected_type == "Int64":
+            preselected_type = "int"
+        types = ["string", "int", "float", "datetime"]
         self.insertItems(0, types)
         self.setCurrentIndex(types.index(preselected_type))
 
@@ -464,5 +467,7 @@ class TypeComboBox(QComboBox):
         """
         if super().currentText() == "string":
             return "object"
+        if super().currentText() == "int":
+            return "Int64"
         else:
             return super().currentText()

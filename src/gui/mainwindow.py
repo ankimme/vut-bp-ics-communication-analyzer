@@ -272,7 +272,7 @@ class MainWindow(QMainWindow):
         """
 
         # TODO delete test
-        if True:
+        if False:
             self.file_path = "placeholder.py"
             import pickle
 
@@ -297,24 +297,20 @@ class MainWindow(QMainWindow):
                 try:
                     self.df_working = dsl.load_data(file_path, dtype, dialect)
                 except ValueError as e:
-                    dlg = QMessageBox(self)
-                    dlg.setWindowTitle("Error")
-                    dlg.setText(str(e))
-                    dlg.setIcon(QMessageBox.Icon.Warning)
-                    dlg.exec()
+                    WarningMessageBox(str(e), self).exec()
                     return
 
-                self.df_working.to_pickle("../save/df3.pkl")  # TODO delete
+                # self.df_working.to_pickle("../save/df3.pkl")  # TODO delete
 
                 self.preprocess_df()
 
                 self.event_handler.notify(EventType.DATAFRAME_CHANGED, self.event_data)
 
                 # # TODO delete
-                import pickle
+                # import pickle
 
-                with open("../save/fcn.pkl", "wb") as f:
-                    pickle.dump(self.fcn, f)
+                # with open("../save/fcn.pkl", "wb") as f:
+                #     pickle.dump(self.fcn, f)
 
     def change_master_station(self) -> None:
         """Open dialog for master station selection.
