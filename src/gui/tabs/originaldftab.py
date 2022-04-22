@@ -29,4 +29,5 @@ class OriginalDfTab(QTableView):
     def update_model(self, data: EventData) -> None:
         self.df_model = DataFrameModel(data.df_filtered.loc[:, data.df_og.columns])
         self.setModel(self.df_model)
+        self.resizeColumnsToContents()
         self.update()

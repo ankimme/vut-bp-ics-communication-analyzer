@@ -34,8 +34,8 @@ class StatsTab(QScrollArea):
 
         self.setWidgetResizable(True)
 
-        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.setStyleSheet("background-color: white;")
+        # self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        # self.setStyleSheet("background-color: white;")
 
         grid_layout = QGridLayout()
         grid_layout.setColumnStretch(0, 1)

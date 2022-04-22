@@ -1,81 +1,23 @@
 Exceptions: file does not exists
 
-Strategy pattern for adding custom columns
-
-----------------------------------------------------------------
-
-Jak se stavet k nan hodnotnam v slozenych tabulkach
-
-Filtrac pres query?
-
-Jak na predikci? Linearni regrese?
-Jaky casovy interval?
-
-
-
-----------------------------------------------------------------
-
-
-Počet paketů v intervale a vývoj v jednotlivých časových úsecích. 
-
-
-Nutné sluopce: čas timestamp/relativni, master slave odlišení - bud jeden 1,2,4 sluopce
-Dát dropdown menu => hodnoty kvartilů a možnost volby sigmy
-
-Split point inter arrival time
-
 Spíše než predikci udělat statistickou analýzu jestli hodnoty můžou sedět výkyvumů
 Systém arima pro predikci? S časovou řadou
 
 Popsat experimenty na útocích
 
-
-
 -------------------------
-
-zakladni info:
-delka trvani (kolik hodin) je v datasetu
-pocet zarizeni a pocet dvojice s rozkliknutim na podrobnosti 
-
-
-workflow
-
-
-change parser
-
-
-automatic detection of datetime
-
-prepsat communication pairs (muze byt dynamicky jen jeden sloupec treba)
-eventy
-
-
-enforce that timestamp column is of timestamp type
-
 
 TRIBUTE ICONS
 https://p.yusukekamiyamane.com/
 
 
-dat vyber komunikace s kadym zvlast a nebo vsema slavama dohromady
 
-
-zkoumani podle casovych oken 
-rozdelit na petiminutove okna / nejlepe dynamicky
-pocet paketů, prumerne hodnoty (+)
-
-olbou i atributu a casbych oken
 zobrazeni diskretni tabulky i s histogramem jednotlivych trid
-graf na zaklade casovych oken ktery zobrazuje napr prumer -> hledame stabilni hodnoty
-rozvrhnout strukturu
-
-statistiky 
 
 
 kontrola ze timestamp ma spravny typ pri nacteni
 reagovat na event u timeframe view
 
-chang time limit
 
 
 u komunikacnich dvojic udelat lepsi legendy
@@ -84,7 +26,7 @@ proc zacina tak nahore
 
 
 
-inter arrival time kdyz bude cas
+
 
 hledat stabilitu hodnot, set druhy s periodicitou
 
@@ -99,8 +41,19 @@ u komunikace se slavy dat tri grafy pro kazdy smer
 
 zvyraznineni uzkych hodnot
 
-p5eindexovani
+X p5eindexovani
 
-volby atributu
+X volby atributu
 
-dat do statistik inter arrival time
+X dat do statistik inter arrival time
+
+X add scrollable to stats
+
+
+Kdyz bude cas:
+
+zvyrazneni radku v taulkach
+- time frame view: ty co jsou mimo +-3 sigma
+- u attribute stats ty co jsou zvolene tak podbarvit a vysedit ty co maji zaporne -3 sigma
+
+- threading aby se to neseklo pri nacitani

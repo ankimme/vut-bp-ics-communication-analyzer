@@ -14,7 +14,7 @@ class AttributeStatsTab(QWidget):
         layout = QVBoxLayout()
 
         # CANVA
-        self.canvas = MplCanvas(width=6, height=5, dpi=100, parent=self)
+        self.canvas = MplCanvas(width=6, height=4.5, dpi=100, parent=self)
         toolbar = NavigationToolbar2QT(self.canvas, self)
 
         layout.addWidget(toolbar)
@@ -54,8 +54,14 @@ class AttributeStatsTab(QWidget):
 
     def update_table_data(self, data: EventData) -> None:
         if data.attribute_name:
-            x = dsa.get_attribute_stats(data.df_filtered, data.fcn, data.attribute_name, data.resample_rate)
+            x = dsa.get_attribute_stats(
+                data.df_filtered,
+                data.fcn,
+                data.attribute_name,
+                data.resample_rate,
+            )
             self.attribute_stats_table.setModel(DataFrameModel(x))
+            self.attribute_stats_table.resizeColumnsToContents()
         # self.table_data.update_model(data.df)
 
         # tmpdf = data.df_og.loc[:, data.df_og.columns]

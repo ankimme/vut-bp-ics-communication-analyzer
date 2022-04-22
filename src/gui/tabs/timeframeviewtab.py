@@ -39,6 +39,9 @@ class TimeFrameViewTab(QTableView):
             tmpdf = tmpdf.resample(data.resample_rate).sum()
             tmpdf = tmpdf.rename(columns={og: og.lstrip(f"{data.attribute_name}:") for og in tmpdf.columns})
 
+            tmpdf.reset_index(inplace=True)
+
             self.df_model = DataFrameModel(tmpdf)
             self.setModel(self.df_model)
+            self.resizeColumnsToContents()
             self.update()
