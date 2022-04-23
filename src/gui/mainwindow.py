@@ -13,6 +13,7 @@ from datetime import datetime
 from bidict import bidict
 import pandas as pd
 
+from PyQt6.QtCore import Qt, QThread, pyqtSlot
 from PyQt6.QtWidgets import (
     QMainWindow,
     QApplication,
@@ -21,6 +22,7 @@ from PyQt6.QtWidgets import (
     QTabWidget,
     QMessageBox,
     QVBoxLayout,
+    QHBoxLayout,
     QLabel,
     QWidget,
 )
@@ -30,7 +32,9 @@ from dsmanipulator import dsloader as dsl
 from dsmanipulator import dscreator as dsc
 from dsmanipulator import dsanalyzer as dsa
 
-from gui.components import OpenCsvWizard, SettingsPanelWidget
+from gui.workers import LoadCsvWorker
+
+from gui.components import OpenCsvWizard, SettingsPanelWidget, QtWaitingSpinner
 from gui.tabs import OriginalDfTab, StatsTab, PairPlotsTab, SlavesPlotTab, TimeFrameViewTab, AttributeStatsTab
 from gui.utils import EventType, EventHandler, EventData
 from gui.components import (
@@ -126,6 +130,8 @@ class MainWindow(QMainWindow):
 
         main_layout.addWidget(QLabel("APPLIED SETTINGS"))
 
+        settings_layout = QHBoxLayout()
+
         settings_panel = SettingsPanelWidget(parent=self)
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, settings_panel.update_panel)
         self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, settings_panel.update_panel)
@@ -134,6 +140,22 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, settings_panel.update_panel)
         self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, settings_panel.update_panel)
         main_layout.addWidget(settings_panel)
+
+        # self.spinner = QtWaitingSpinner(self)
+
+        # self.spinner.setRoundness(70.0)
+        # self.spinner.setMinimumTrailOpacity(15.0)
+        # self.spinner.setTrailFadePercentage(70.0)
+        # self.spinner.setNumberOfLines(12)
+        # self.spinner.setLineLength(10)
+        # self.spinner.setLineWidth(5)
+        # self.spinner.setInnerRadius(10)
+        # self.spinner.setRevolutionsPerSecond(1)
+        # self.spinner.setColor(QColor(81, 4, 71))
+
+        # settings_layout.addWidget(settings_panel)
+        # settings_layout.addWidget(self.spinner)
+        # main_layout.addLayout(settings_layout)
 
         # TABS
 
@@ -265,6 +287,13 @@ class MainWindow(QMainWindow):
 
     # region Actions
 
+    @pyqtSlot(pd.DataFrame)
+    def load_csv_from_worker(self, df: pd.DataFrame) -> None:
+        """TODO move to different region"""
+        self.df_working = df
+        self.preprocess_df()
+        self.event_handler.notify(EventType.DATAFRAME_CHANGED, self.event_data)
+
     def load_csv(self) -> None:
         """Open dialog for loading data from a CSV file.
 
@@ -293,18 +322,50 @@ class MainWindow(QMainWindow):
             dialog = OpenCsvWizard(file_path)
             if dialog.exec():
                 # TODO exception
-                dialect, dtype, self.fcn = dialog.get_csv_settings()
-                try:
-                    self.df_working = dsl.load_data(file_path, dtype, dialect)
-                except ValueError as e:
-                    WarningMessageBox(str(e), self).exec()
-                    return
+                dialect, data_types, self.fcn = dialog.get_csv_settings()
+
+                self.thread = QThread()
+                self.worker = LoadCsvWorker(file_path, data_types, dialect)
+                self.worker.moveToThread(self.thread)
+
+                self.thread.started.connect(self.worker.load_csv)
+
+                self.worker.csv_loaded.connect(self.load_csv_from_worker)
+
+                self.worker.finished.connect(self.thread.quit)
+                self.worker.finished.connect(self.worker.deleteLater)
+                self.thread.finished.connect(self.thread.deleteLater)
+                self.thread.finished.connect(lambda: self.spinner.stop())
+
+                self.spinner = QtWaitingSpinner(self, True, True, Qt.WindowModality.ApplicationModal)
+                self.spinner.start()
+                self.thread.start()
+
+                # spinner = QtWaitingSpinner(self)
+
+                # spinner.setRoundness(70.0)
+                # spinner.setMinimumTrailOpacity(15.0)
+                # spinner.setTrailFadePercentage(70.0)
+                # spinner.setNumberOfLines(12)
+                # spinner.setLineLength(10)
+                # spinner.setLineWidth(5)
+                # spinner.setInnerRadius(10)
+                # spinner.setRevolutionsPerSecond(1)
+                # spinner.setColor(QColor(81, 4, 71))
+
+                # spinner.start()
+                # spinner.stop()
+
+                # TODO COPY THIS BLOCK
+                # try:
+                #     self.df_working = dsl.load_data(file_path, data_types, dialect)
+                # except ValueError as e:
+                #     WarningMessageBox(str(e), self).exec()
+                #     return
+                # self.preprocess_df()
+                # self.event_handler.notify(EventType.DATAFRAME_CHANGED, self.event_data)
 
                 # self.df_working.to_pickle("../save/df3.pkl")  # TODO delete
-
-                self.preprocess_df()
-
-                self.event_handler.notify(EventType.DATAFRAME_CHANGED, self.event_data)
 
                 # # TODO delete
                 # import pickle

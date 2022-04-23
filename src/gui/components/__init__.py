@@ -10,3 +10,4 @@ from .loadwarningbox import WarningMessageBox
 from .changeintervaldialog import ChangeIntervalDialog
 from .changedirectiondialog import ChangeDirectionDialog
 from .selectattributevaluesdialog import SelectAttributeValuesDialog
+from .qtwaitingspinner import QtWaitingSpinner
