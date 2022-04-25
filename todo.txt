@@ -55,5 +55,6 @@ Kdyz bude cas:
 zvyrazneni radku v taulkach
 - time frame view: ty co jsou mimo +-3 sigma
 - u attribute stats ty co jsou zvolene tak podbarvit a vysedit ty co maji zaporne -3 sigma
+- 
+- threading aby se to neseklo pri nacitani ruznych veci
 
-- threading aby se to neseklo pri nacitani

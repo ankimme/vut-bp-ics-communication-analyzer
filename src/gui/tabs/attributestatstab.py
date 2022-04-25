@@ -37,9 +37,9 @@ class AttributeStatsTab(QWidget):
     def update_plot(self, data: EventData) -> None:
         # return
         # TODO assert
+        self.canvas.axes.cla()
         if data.attribute_name:
 
-            self.canvas.axes.cla()
             if len(data.df_filtered.index) > 0 and len(data.attribute_values) > 0:
 
                 dsa.plot_attribute_values(

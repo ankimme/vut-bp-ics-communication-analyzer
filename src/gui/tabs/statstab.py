@@ -1,5 +1,7 @@
 # TODO doc
 
+import numpy as np
+
 import os
 from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtWidgets import (
@@ -234,11 +236,13 @@ class StatsTab(QScrollArea):
         for attribute in attribute_cols:
             pad = 25 - len(attribute)
             filler = " "
-            unique_values = data.df_filtered[attribute].unique()
+            unique_values = data.df_filtered[attribute].dropna().unique()
             s += f"{attribute}{filler*pad}{len(unique_values)}\n"
 
             label = QLabel()
-            label.setText(f"<b>{attribute}</b><br>{'<br>'.join(str(x) for x in unique_values)}")
+            label.setText(
+                f"<b>{attribute}</b><br>{'<br>'.join(f'{x:g}' if isinstance(x, np.floating) else str(x) for x in unique_values)}"
+            )
             self.content_layout.addWidget(label)
         self.work_stat_widgets["Unique values of attributes"].set_value(s)
         self.unique_values_button.setEnabled(True)

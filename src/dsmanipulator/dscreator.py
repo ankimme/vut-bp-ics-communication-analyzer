@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 
 from bidict import bidict
+from pyparsing import col
 
 from .utils.dataobjects import CommunicationPair, Direction, FileColumnNames, Station
 
@@ -646,7 +647,8 @@ def expand_values_to_columns(
 
     original_values = df[col_name].values
 
-    unique_values = np.unique(original_values)
+    # unique_values = np.unique(original_values)
+    unique_values = np.array(df[col_name].unique())
 
     # drop nans in arrays of all types
     unique_values = unique_values[unique_values == unique_values]

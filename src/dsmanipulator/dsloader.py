@@ -15,7 +15,7 @@ def load_data(file_name: str, data_types: dict[str, str], dialect: csv.Dialect, 
 
     df = pd.read_csv(file_name, dialect=dialect, dtype=col_types, nrows=row_limit, na_values=[""])
 
-    df = df.astype({k: "str" for k, v in col_types.items() if v == "object"})
+    # df = df.astype({k: "str" for k, v in col_types.items() if v == "object"})
 
     for col_name in date_time_columns:
         df[col_name] = pd.to_datetime(df[col_name])
@@ -150,17 +150,17 @@ def detect_columns(file_name: str, dialect: csv.Dialect, row_limit: int = 10000)
     predefined_types["Relative Time"] = "float"
     predefined_types["srcIP"] = "object"
     predefined_types["dstIP"] = "object"
-    predefined_types["srcPort"] = "Int64"
-    predefined_types["dstPort"] = "Int64"
-    predefined_types["ipLen"] = "Int64"
-    predefined_types["len"] = "Int64"
+    predefined_types["srcPort"] = "float"
+    predefined_types["dstPort"] = "float"
+    predefined_types["ipLen"] = "float"
+    predefined_types["len"] = "float"
     predefined_types["fmt"] = "object"
     predefined_types["uType"] = "object"
-    predefined_types["asduType"] = "Int64"
-    predefined_types["numix"] = "Int64"
-    predefined_types["cot"] = "Int64"
-    predefined_types["oa"] = "Int64"
-    predefined_types["addr"] = "Int64"
+    predefined_types["asduType"] = "float"
+    predefined_types["numix"] = "float"
+    predefined_types["cot"] = "float"
+    predefined_types["oa"] = "float"
+    predefined_types["addr"] = "float"
     predefined_types["ioa"] = "object"
 
     # change the detected columns to a predefined type. the predefined types are optimal for the datasets provided with the bachelor thesis

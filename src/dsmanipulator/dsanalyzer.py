@@ -1,3 +1,4 @@
+from re import A
 from matplotlib.dates import DateFormatter, AutoDateLocator
 from matplotlib.axes import Axes
 
@@ -101,7 +102,10 @@ def get_iat_stats_whole_df(df: pd.DataFrame, fcn: FileColumnNames):
     # np.savetxt("iats_whole_df.txt", iats)
 
     # mean, median, min, max
-    return iats.mean(), np.median(iats), iats.min(), iats.max()
+    if len(iats) > 0:
+        return iats.mean(), np.median(iats), iats.min(), iats.max()
+    else:
+        return 0, 0, 0, 0
 
 
 def get_iat_stats_filtered(
@@ -142,8 +146,11 @@ def get_iat_stats_filtered(
 
     # np.savetxt("iats_filtered.txt", all_iats)
 
-    # mean, median, min, max
-    return all_iats.mean(), np.median(all_iats), all_iats.min(), all_iats.max()
+    if len(all_iats) > 0:
+        # mean, median, min, max
+        return all_iats.mean(), np.median(all_iats), all_iats.min(), all_iats.max()
+    else:
+        return 0, 0, 0, 0
 
 
 def get_packet_count_by_direction(

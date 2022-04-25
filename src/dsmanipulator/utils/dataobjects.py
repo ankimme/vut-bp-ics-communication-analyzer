@@ -21,7 +21,7 @@ class Station:
 
     def __str__(self) -> str:
         if self.port:
-            return f"{self.ip}:{self.port}"
+            return f"{self.ip}:{self.port:.0f}"
         else:
             return f"{self.ip}"
 

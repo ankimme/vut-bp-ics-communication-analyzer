@@ -1,5 +1,6 @@
 # todo doc
 
+import pandas as pd
 from PyQt6.QtWidgets import QWidget, QTableView
 
 from gui.utils import DataFrameModel, EventData
@@ -44,4 +45,5 @@ class TimeFrameViewTab(QTableView):
             self.df_model = DataFrameModel(tmpdf)
             self.setModel(self.df_model)
             self.resizeColumnsToContents()
+
             self.update()

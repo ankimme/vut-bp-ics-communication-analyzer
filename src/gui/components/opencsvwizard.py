@@ -411,11 +411,11 @@ class PageSetDataTypes(QWizardPage):
 
             if self.groups["src_port"].checkedButton():
                 assert (
-                    self.wizard().col_types_by_user[self.wizard().fcn.src_port].currentText() == "Int64"
-                ), "Source port column should be of integer type"
+                    self.wizard().col_types_by_user[self.wizard().fcn.src_port].currentText() == "float"
+                ), "Source port column should be of numeric type"
                 assert (
-                    self.wizard().col_types_by_user[self.wizard().fcn.dst_port].currentText() == "Int64"
-                ), "Destination port column should be of integer type"
+                    self.wizard().col_types_by_user[self.wizard().fcn.dst_port].currentText() == "float"
+                ), "Destination port column should be of numeric type"
 
             # try loading the csv with given settings
             col_types = {key: value.currentText() for key, value in self.wizard().col_types_by_user.items()}
@@ -442,16 +442,16 @@ class TypeComboBox(QComboBox):
     """ComboBox used for selecting data type of column.
 
     Show 'string' instead of 'object'. But return 'object'.
-    Show 'int' instead of 'Int64'. But return 'Int64'.
+    Show 'numeric' instead of 'float'. But return 'float'.
     """
 
     def __init__(self, preselected_type, parent: QWidget = None) -> None:
         super().__init__(parent)
         if preselected_type == "object":
             preselected_type = "string"
-        if preselected_type == "Int64":
-            preselected_type = "int"
-        types = ["string", "int", "float", "datetime"]
+        if preselected_type == "float":
+            preselected_type = "numeric"
+        types = ["string", "numeric", "datetime"]
         self.insertItems(0, types)
         self.setCurrentIndex(types.index(preselected_type))
 
@@ -467,7 +467,7 @@ class TypeComboBox(QComboBox):
         """
         if super().currentText() == "string":
             return "object"
-        if super().currentText() == "int":
-            return "Int64"
+        if super().currentText() == "numeric":
+            return "float"
         else:
             return super().currentText()

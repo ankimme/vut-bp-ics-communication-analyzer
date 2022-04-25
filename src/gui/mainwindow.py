@@ -10,6 +10,7 @@ March 2022
 """
 
 from datetime import datetime
+import os
 from bidict import bidict
 import pandas as pd
 
@@ -292,6 +293,7 @@ class MainWindow(QMainWindow):
         """TODO move to different region"""
         self.df_working = df
         self.preprocess_df()
+        self.setWindowTitle(f"ICS Analyzer - {os.path.basename(self.file_path)}")
         self.event_handler.notify(EventType.DATAFRAME_CHANGED, self.event_data)
 
     def load_csv(self) -> None:
@@ -331,6 +333,7 @@ class MainWindow(QMainWindow):
                 self.thread.started.connect(self.worker.load_csv)
 
                 self.worker.csv_loaded.connect(self.load_csv_from_worker)
+                # self.worker.exception_raised.connect(TODO)
 
                 self.worker.finished.connect(self.thread.quit)
                 self.worker.finished.connect(self.worker.deleteLater)
@@ -463,7 +466,7 @@ class MainWindow(QMainWindow):
             if self.attribute_name is not None:
 
                 dlg = SelectAttributeValuesDialog(
-                    self.attribute_values, self.df_working[self.attribute_name].unique(), parent=self
+                    self.attribute_values, self.df_working[self.attribute_name].dropna().unique(), parent=self
                 )
                 if dlg.exec():
                     self.attribute_values = dlg.get_attribute_values()
