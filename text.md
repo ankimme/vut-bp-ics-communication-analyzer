@@ -65,8 +65,8 @@ COT - cause of transmission
 3 - spontaneous
 13 - data transmission
 addr - linkova adresa aka kod zařízení (0,1,2 oktety) ffff je broadcast - v našem případě 65535
-Numix - number of objects??
-OA - unit
+Numix - number of ioas
+OA - Originator address
 IOA - unit, information object address - identifikace konkrétní dát konkrétní stanice
 COA - common asdu address, adresa klienta (logické stanice), v monitoring směru obsahuji adresu odesílatele, 1 nebo 2 byty 
 ```
