@@ -12,7 +12,7 @@ March 2022
 from bidict import bidict
 
 from PyQt6.QtCore import pyqtSlot
-from PyQt6.QtWidgets import QWidget, QDialog, QVBoxLayout, QCheckBox, QDialogButtonBox, QPushButton
+from PyQt6.QtWidgets import QWidget, QDialog, QVBoxLayout, QCheckBox, QDialogButtonBox, QPushButton, QScrollArea
 
 from dsmanipulator import dsanalyzer as dsa
 from dsmanipulator.utils import Station
@@ -61,17 +61,22 @@ class SelectSlavesDialog(QDialog):
 
         self.setWindowTitle("Select slaves")
 
+        # QScrollArea -> QWidget -> layout -> content widgets
+        dialog_layout = QVBoxLayout()
+        scroll_area = QScrollArea()
+        parent_widget = QWidget(self)
+
         self.layout = QVBoxLayout()
 
         # select all button
         select_all_button = QPushButton("Select all")
         select_all_button.clicked.connect(self.select_all)
-        self.layout.addWidget(select_all_button)
+        dialog_layout.addWidget(select_all_button)
 
         # deselect all button
         deselect_all_button = QPushButton("Deselect all")
         deselect_all_button.clicked.connect(self.deselect_all)
-        self.layout.addWidget(deselect_all_button)
+        dialog_layout.addWidget(deselect_all_button)
 
         # ids of stations that communicate with the master station
         all_slave_ids = dsa.get_connected_stations(pair_ids, master_station_id)
@@ -92,8 +97,15 @@ class SelectSlavesDialog(QDialog):
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
 
-        self.layout.addWidget(self.buttons)
-        self.setLayout(self.layout)
+        # self.layout.addWidget(self.buttons)
+        # self.setLayout(self.layout)
+
+        parent_widget.setLayout(self.layout)
+
+        scroll_area.setWidget(parent_widget)
+        dialog_layout.addWidget(scroll_area)
+        dialog_layout.addWidget(self.buttons)
+        self.setLayout(dialog_layout)
 
     @pyqtSlot()
     def select_all(self) -> None:

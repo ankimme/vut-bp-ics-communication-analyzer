@@ -1,7 +1,7 @@
 # TODO doc
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QWidget, QDialog, QVBoxLayout, QButtonGroup, QDialogButtonBox, QRadioButton
+from PyQt6.QtWidgets import QWidget, QDialog, QVBoxLayout, QButtonGroup, QDialogButtonBox, QRadioButton, QScrollArea
 
 
 class SelectAttributeDialog(QDialog):
@@ -9,6 +9,11 @@ class SelectAttributeDialog(QDialog):
         super().__init__(parent)
 
         self.setWindowTitle("Select attribute")
+
+        # QScrollArea -> QWidget -> layout -> content widgets
+        dialog_layout = QVBoxLayout()
+        scroll_area = QScrollArea()
+        parent_widget = QWidget(self)
 
         vbox_layout = QVBoxLayout()
 
@@ -27,8 +32,12 @@ class SelectAttributeDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
-        vbox_layout.addWidget(buttons)
-        self.setLayout(vbox_layout)
+        parent_widget.setLayout(vbox_layout)
+
+        scroll_area.setWidget(parent_widget)
+        dialog_layout.addWidget(scroll_area)
+        dialog_layout.addWidget(buttons)
+        self.setLayout(dialog_layout)
 
     def get_attribute_name(self) -> str:
         """Return the selected attribute in dialog.

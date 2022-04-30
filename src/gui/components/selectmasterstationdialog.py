@@ -2,7 +2,7 @@
 
 from bidict import bidict
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QWidget, QDialog, QVBoxLayout, QButtonGroup, QDialogButtonBox, QRadioButton
+from PyQt6.QtWidgets import QWidget, QDialog, QScrollArea, QVBoxLayout, QButtonGroup, QDialogButtonBox, QRadioButton
 
 from dsmanipulator.utils import Station
 
@@ -25,6 +25,11 @@ class SelectMasterStationsDialog(QDialog):
 
         self.setWindowTitle("Select master station")
 
+        # QScrollArea -> QWidget -> layout -> content widgets
+        dialog_layout = QVBoxLayout()
+        scroll_area = QScrollArea()
+        parent_widget = QWidget(self)
+
         self.layout = QVBoxLayout()
 
         self.button_group = QButtonGroup(self)
@@ -40,8 +45,15 @@ class SelectMasterStationsDialog(QDialog):
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
 
-        self.layout.addWidget(self.buttons)
-        self.setLayout(self.layout)
+        # self.layout.addWidget(self.buttons)
+        # self.setLayout(self.layout)
+
+        parent_widget.setLayout(self.layout)
+
+        scroll_area.setWidget(parent_widget)
+        dialog_layout.addWidget(scroll_area)
+        dialog_layout.addWidget(self.buttons)
+        self.setLayout(dialog_layout)
 
     def get_master_station_id(self) -> int:
         """Return the id of the selected station in dialog.
