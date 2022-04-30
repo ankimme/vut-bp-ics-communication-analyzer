@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QApplication,
     QToolBar,
+    QMenuBar,
     QFileDialog,
     QTabWidget,
     QMessageBox,
@@ -124,8 +125,11 @@ class MainWindow(QMainWindow):
 
         # TOOLBAR
 
-        toolbar = self.create_toolbar()
-        self.addToolBar(toolbar)
+        # toolbar = self.create_toolbar()
+        # self.addToolBar(toolbar)
+
+        menuBar = self.create_menubar()
+        self.setMenuBar(menuBar)
 
         # SETTINGS PANEL
 
@@ -376,6 +380,10 @@ class MainWindow(QMainWindow):
                 # with open("../save/fcn.pkl", "wb") as f:
                 #     pickle.dump(self.fcn, f)
 
+    def show_help(self) -> None:
+        # TODO
+        pass
+
     def change_master_station(self) -> None:
         """Open dialog for master station selection.
 
@@ -512,7 +520,27 @@ class MainWindow(QMainWindow):
 
     # endregion
 
-    # region Toolbar
+    # region Menu & Toolbar
+
+    def create_menubar(self) -> QMenuBar:
+        assert self.actions
+
+        menubar = QMenuBar()
+
+        fileMenu = menubar.addMenu("&File")
+        editMenu = menubar.addMenu("&Edit")
+        helpMenu = menubar.addMenu("&Help")
+
+        for action_name, qaction in self.actions.items():
+            match action_name:
+                case "Load CSV" | "Exit":
+                    fileMenu.addAction(qaction)
+                case "Show help":
+                    helpMenu.addAction(qaction)
+                case _:
+                    editMenu.addAction(qaction)
+
+        return menubar
 
     def create_toolbar(self) -> QToolBar:
         """Initialize toolbar with actions.
@@ -552,48 +580,52 @@ class MainWindow(QMainWindow):
 
         # LOAD CSV #
         name = "Load CSV"
-        actions[name] = QAction(icon=QIcon("gui/icons/file.png"), text=name, parent=self)
-        # https://www.iconfinder.com/icons/290138/document_extension_file_format_paper_icon
+        actions[name] = QAction(text=name, parent=self)
         actions[name].triggered.connect(self.load_csv)
+
+        # SHOW HELP #
+        name = "Show help"
+        actions[name] = QAction(text=name, parent=self)
+        actions[name].triggered.connect(self.show_help)
 
         # SELECT MASTER STATION #
         name = "Select master station"
-        actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
+        actions[name] = QAction(text=name, parent=self)
         actions[name].triggered.connect(self.change_master_station)
 
-        # SELECT PAIRS #
-        name = "Select pairs"
-        actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
+        # SELECT SLAVES #
+        name = "Select slaves"
+        actions[name] = QAction(text=name, parent=self)
         actions[name].triggered.connect(self.change_slaves)
 
-        # CHANGE DIRECTION #
-        name = "Change direction"
-        actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
+        # SELECT DIRECTION #
+        name = "Select direction"
+        actions[name] = QAction(text=name, parent=self)
         actions[name].triggered.connect(self.change_direction)
 
         # CHANGE INTERVAL #
-        name = "Change interval"
-        actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
+        name = "Change  start and end time"
+        actions[name] = QAction(text=name, parent=self)
         actions[name].triggered.connect(self.change_interval)
 
         # CHANGE RESAMPLE RATE #
-        name = "Change resample rate"
-        actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
+        name = "Change time window size"
+        actions[name] = QAction(text=name, parent=self)
         actions[name].triggered.connect(self.change_resample_rate)
 
         # CHANGE ATTRIBUTE OF INTEREST #
-        name = "Change attribute"
-        actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
+        name = "Select attribute"
+        actions[name] = QAction(text=name, parent=self)
         actions[name].triggered.connect(self.change_attribute_name)
 
         # SELECT ATTRIBUTE VALUES #
         name = "Select attribute values"
-        actions[name] = QAction(icon=QIcon("gui/icons/computa.png"), text=name, parent=self)
+        actions[name] = QAction(text=name, parent=self)
         actions[name].triggered.connect(self.select_attribute_values)
 
         # EXIT #
         name = "Exit"
-        actions[name] = QAction(icon=QIcon("gui/icons/exit.png"), text=name, parent=self)
+        actions[name] = QAction(text=name, parent=self)
         # https://www.iconfinder.com/icons/352328/app_exit_to_icon
         actions[name].triggered.connect(QApplication.instance().quit)  # TODO je to spravne?
 
