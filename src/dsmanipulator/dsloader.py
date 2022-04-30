@@ -145,6 +145,11 @@ def detect_columns(file_name: str, dialect: csv.Dialect, row_limit: int = 10000)
 
     detected_cols = df.dtypes.to_dict()
 
+    # cast int to float
+    detected_cols = {k: ("float" if v == "int" else v) for k, v in detected_cols.items()}
+    # cast unsupported data types (not datetime, float or object) to object
+    detected_cols = {k: (v if v in ["datetime", "float", "object"] else "object") for k, v in detected_cols.items()}
+
     predefined_types: dict[str, str] = {}
     predefined_types["TimeStamp"] = "datetime"
     predefined_types["Relative Time"] = "float"
