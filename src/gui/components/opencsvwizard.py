@@ -239,37 +239,37 @@ class PageSetDataTypes(QWizardPage):
         self.grid_layout.addWidget(QLabel("Data type"), 0, 1, Qt.AlignmentFlag.AlignCenter)
 
         self.grid_layout.addWidget(QLabel("Time stamp"), 0, 2, Qt.AlignmentFlag.AlignCenter)
-        b = QPushButton("Reset")
-        b.clicked.connect(lambda: self.deselect_group(self.groups["timestamp"]))
-        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["timestamp"]))
-        self.grid_layout.addWidget(b, 1, 2, Qt.AlignmentFlag.AlignCenter)
+        # b = QPushButton("Reset")
+        # b.clicked.connect(lambda: self.deselect_group(self.groups["timestamp"]))
+        # b.clicked.connect(lambda: self.clear_file_col_names(self.groups["timestamp"]))
+        # self.grid_layout.addWidget(b, 1, 2, Qt.AlignmentFlag.AlignCenter)
 
         self.grid_layout.addWidget(QLabel("Rel time"), 0, 3, Qt.AlignmentFlag.AlignCenter)
-        b = QPushButton("Reset")
+        b = QPushButton("None")
         b.clicked.connect(lambda: self.deselect_group(self.groups["rel_time"]))
         b.clicked.connect(lambda: self.clear_file_col_names(self.groups["rel_time"]))
         self.grid_layout.addWidget(b, 1, 3, Qt.AlignmentFlag.AlignCenter)
 
         self.grid_layout.addWidget(QLabel("SRC IP"), 0, 4, Qt.AlignmentFlag.AlignCenter)
-        b = QPushButton("Reset")
-        b.clicked.connect(lambda: self.deselect_group(self.groups["src_ip"]))
-        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["src_ip"]))
-        self.grid_layout.addWidget(b, 1, 4, Qt.AlignmentFlag.AlignCenter)
+        # b = QPushButton("Reset")
+        # b.clicked.connect(lambda: self.deselect_group(self.groups["src_ip"]))
+        # b.clicked.connect(lambda: self.clear_file_col_names(self.groups["src_ip"]))
+        # self.grid_layout.addWidget(b, 1, 4, Qt.AlignmentFlag.AlignCenter)
 
         self.grid_layout.addWidget(QLabel("SRC Port"), 0, 5, Qt.AlignmentFlag.AlignCenter)
-        b = QPushButton("Reset")
+        b = QPushButton("None")
         b.clicked.connect(lambda: self.deselect_group(self.groups["src_port"]))
         b.clicked.connect(lambda: self.clear_file_col_names(self.groups["src_port"]))
         self.grid_layout.addWidget(b, 1, 5, Qt.AlignmentFlag.AlignCenter)
 
         self.grid_layout.addWidget(QLabel("DST IP"), 0, 6, Qt.AlignmentFlag.AlignCenter)
-        b = QPushButton("Reset")
-        b.clicked.connect(lambda: self.deselect_group(self.groups["dst_ip"]))
-        b.clicked.connect(lambda: self.clear_file_col_names(self.groups["dst_ip"]))
-        self.grid_layout.addWidget(b, 1, 6, Qt.AlignmentFlag.AlignCenter)
+        # b = QPushButton("Reset")
+        # b.clicked.connect(lambda: self.deselect_group(self.groups["dst_ip"]))
+        # b.clicked.connect(lambda: self.clear_file_col_names(self.groups["dst_ip"]))
+        # self.grid_layout.addWidget(b, 1, 6, Qt.AlignmentFlag.AlignCenter)
 
         self.grid_layout.addWidget(QLabel("DST Port"), 0, 7, Qt.AlignmentFlag.AlignCenter)
-        b = QPushButton("Reset")
+        b = QPushButton("None")
         b.clicked.connect(lambda: self.deselect_group(self.groups["dst_port"]))
         b.clicked.connect(lambda: self.clear_file_col_names(self.groups["dst_port"]))
         self.grid_layout.addWidget(b, 1, 7, Qt.AlignmentFlag.AlignCenter)
@@ -417,9 +417,15 @@ class PageSetDataTypes(QWizardPage):
                     self.wizard().col_types_by_user[self.wizard().fcn.dst_port].currentText() == "float"
                 ), "Destination port column should be of numeric type"
 
+            # check relative time is numeric
+            if self.groups["rel_time"].checkedButton():
+                assert (
+                    self.wizard().col_types_by_user[self.wizard().fcn.rel_time].currentText() == "float"
+                ), "Relative time column should be of numeric type"
+
             # try loading the csv with given settings
             col_types = {key: value.currentText() for key, value in self.wizard().col_types_by_user.items()}
-            dsl.load_data(self.wizard().file_name, col_types, self.wizard().dialect, row_limit=10000)
+            dsl.load_data(self.wizard().file_name, col_types, self.wizard().dialect, row_limit=15000)
 
             self.warning_label.clear()
 
