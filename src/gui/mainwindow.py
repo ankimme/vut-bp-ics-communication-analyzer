@@ -172,7 +172,7 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, original_df_tab.update_model)
         self.event_handler.subscribe(EventType.DIRECTION_CHANGED, original_df_tab.update_model)
         self.event_handler.subscribe(EventType.INTERVAL_CHANGED, original_df_tab.update_model)
-        tabs.addTab(original_df_tab, "Original Dataframe")
+        tabs.addTab(original_df_tab, "Dataset table")
 
         # TAB 2 #
 
@@ -192,7 +192,7 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, pair_plots_tab.update_plots)
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, pair_plots_tab.update_plots)
         self.event_handler.subscribe(EventType.INTERVAL_CHANGED, pair_plots_tab.update_plots)
-        tabs.addTab(pair_plots_tab, "Communication pairs")
+        tabs.addTab(pair_plots_tab, "All pairs")
 
         # TAB 4 #
         slave_plots_tab = SlavesPlotTab(self)
@@ -201,7 +201,7 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, slave_plots_tab.update_plots)
         self.event_handler.subscribe(EventType.DIRECTION_CHANGED, slave_plots_tab.update_plots)
         self.event_handler.subscribe(EventType.INTERVAL_CHANGED, slave_plots_tab.update_plots)
-        tabs.addTab(slave_plots_tab, "Slave communication")
+        tabs.addTab(slave_plots_tab, "Selected slaves")
 
         # TAB 5 #
         time_frame_view_tab = TimeFrameViewTab(self)
@@ -211,7 +211,7 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.INTERVAL_CHANGED, time_frame_view_tab.update_model)
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, time_frame_view_tab.update_model)
         self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, time_frame_view_tab.update_model)
-        tabs.addTab(time_frame_view_tab, "Time frame view")
+        tabs.addTab(time_frame_view_tab, "Attribute table")
 
         # TAB 6 #
         attribute_stats_tab = AttributeStatsTab(self)
@@ -222,7 +222,7 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, attribute_stats_tab.update_tab)
         self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, attribute_stats_tab.update_tab)
         self.event_handler.subscribe(EventType.ATTRIBUTE_VALUES_CHANGED, attribute_stats_tab.update_tab)
-        tabs.addTab(attribute_stats_tab, "Attribute stats")
+        tabs.addTab(attribute_stats_tab, "Attribute statistics")
 
         main_layout.addWidget(tabs)
 
