@@ -10,6 +10,8 @@ from dsmanipulator import dscreator as dsc
 from dsmanipulator.utils import Direction, FileColumnNames, Station, DirectionEnum
 
 
+import random
+
 from bidict import bidict
 
 # region Dataframe Insights
@@ -182,8 +184,8 @@ def detect_master_staion(
 
     Returns
     -------
-    int | None
-        ID of master station. None if not found.
+    int
+        ID of master station. If the detection fails return a random value.
     """
     pass
 
@@ -195,7 +197,7 @@ def detect_master_staion(
             if str(port) in station.ip:
                 return station_id
     else:
-        return None
+        return random.choice(list(station_ids.keys()))
 
 
 def get_connected_stations(pair_ids: bidict[int, frozenset], master_station_id: int) -> list[int]:
