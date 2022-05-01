@@ -1,7 +1,16 @@
 # TODO doc
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QWidget, QDialog, QVBoxLayout, QButtonGroup, QDialogButtonBox, QRadioButton, QScrollArea
+from PyQt6.QtCore import Qt, pyqtSlot
+from PyQt6.QtWidgets import (
+    QWidget,
+    QDialog,
+    QVBoxLayout,
+    QButtonGroup,
+    QDialogButtonBox,
+    QRadioButton,
+    QScrollArea,
+    QPushButton,
+)
 
 
 class SelectAttributeDialog(QDialog):
@@ -16,6 +25,9 @@ class SelectAttributeDialog(QDialog):
         parent_widget = QWidget(self)
 
         vbox_layout = QVBoxLayout()
+
+        deselect_button = QPushButton("None")
+        deselect_button.clicked.connect(self.deselect_all)
 
         self.button_group = QButtonGroup(self)
 
@@ -35,6 +47,7 @@ class SelectAttributeDialog(QDialog):
         parent_widget.setLayout(vbox_layout)
 
         scroll_area.setWidget(parent_widget)
+        dialog_layout.addWidget(deselect_button)
         dialog_layout.addWidget(scroll_area)
         dialog_layout.addWidget(buttons)
         self.setLayout(dialog_layout)
@@ -47,4 +60,18 @@ class SelectAttributeDialog(QDialog):
         str
             Name of selected attribute.
         """
-        return self.button_group.checkedButton().text()
+
+        # check that a button is checked
+        if self.button_group.checkedId() != -1:
+            return self.button_group.checkedButton().text()
+        else:
+            return None
+
+    @pyqtSlot()
+    def deselect_all(self) -> None:
+        """Uncheck all buttons in dialog."""
+        self.button_group.setExclusive(False)
+        for button in self.button_group.buttons():
+            if button.isChecked():
+                button.setChecked(False)
+        self.button_group.setExclusive(True)

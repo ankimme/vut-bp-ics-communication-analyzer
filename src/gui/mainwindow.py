@@ -172,6 +172,8 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, original_df_tab.update_model)
         self.event_handler.subscribe(EventType.DIRECTION_CHANGED, original_df_tab.update_model)
         self.event_handler.subscribe(EventType.INTERVAL_CHANGED, original_df_tab.update_model)
+        self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, original_df_tab.update_model)
+        self.event_handler.subscribe(EventType.ATTRIBUTE_VALUES_CHANGED, original_df_tab.update_model)
         tabs.addTab(original_df_tab, "Dataset table")
 
         # TAB 2 #
@@ -183,6 +185,8 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, stats_tab.update_work_stats)
         self.event_handler.subscribe(EventType.DIRECTION_CHANGED, stats_tab.update_work_stats)
         self.event_handler.subscribe(EventType.INTERVAL_CHANGED, stats_tab.update_work_stats)
+        self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, stats_tab.update_work_stats)
+        self.event_handler.subscribe(EventType.ATTRIBUTE_VALUES_CHANGED, stats_tab.update_work_stats)
 
         tabs.addTab(stats_tab, "General statistics")
 
@@ -201,6 +205,8 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, slave_plots_tab.update_plots)
         self.event_handler.subscribe(EventType.DIRECTION_CHANGED, slave_plots_tab.update_plots)
         self.event_handler.subscribe(EventType.INTERVAL_CHANGED, slave_plots_tab.update_plots)
+        self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, slave_plots_tab.update_plots)
+        self.event_handler.subscribe(EventType.ATTRIBUTE_VALUES_CHANGED, slave_plots_tab.update_plots)
         tabs.addTab(slave_plots_tab, "Selected slaves")
 
         # TAB 5 #
@@ -211,6 +217,7 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.INTERVAL_CHANGED, time_frame_view_tab.update_model)
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, time_frame_view_tab.update_model)
         self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, time_frame_view_tab.update_model)
+        self.event_handler.subscribe(EventType.ATTRIBUTE_VALUES_CHANGED, time_frame_view_tab.update_model)
         tabs.addTab(time_frame_view_tab, "Attribute table")
 
         # TAB 6 #
@@ -257,11 +264,22 @@ class MainWindow(QMainWindow):
                 self.master_station_id, self.slave_station_ids, self.direction, self.direction_ids
             )
 
-            return self.df_working[
-                (self.df_working[self.fcn.pair_id].isin(filtered_pair_ids))
-                & (self.df_working[self.fcn.direction_id].isin(filtered_direction_ids))
-                & (self.df_working[self.fcn.timestamp].between(self.start_dt, self.end_dt))
-            ]
+            if self.attribute_name is not None:
+
+                return self.df_working[
+                    (self.df_working[self.fcn.pair_id].isin(filtered_pair_ids))
+                    & (self.df_working[self.fcn.direction_id].isin(filtered_direction_ids))
+                    & (self.df_working[self.fcn.timestamp].between(self.start_dt, self.end_dt))
+                    & (self.df_working[self.attribute_name].isin(self.attribute_values))
+                ]
+
+            else:
+                return self.df_working[
+                    (self.df_working[self.fcn.pair_id].isin(filtered_pair_ids))
+                    & (self.df_working[self.fcn.direction_id].isin(filtered_direction_ids))
+                    & (self.df_working[self.fcn.timestamp].between(self.start_dt, self.end_dt))
+                ]
+
         else:
             return None
 
@@ -467,7 +485,10 @@ class MainWindow(QMainWindow):
                 self.attribute_name = dlg.get_attribute_name()
 
                 # automatically select all
-                self.attribute_values = self.df_working[self.attribute_name].unique()
+                if self.attribute_name is not None:
+                    self.attribute_values = self.df_working[self.attribute_name].dropna().unique()
+                else:
+                    self.attribute_values = []
 
                 self.event_handler.notify(EventType.ATTRIBUTE_CHANGED, self.event_data)
         else:

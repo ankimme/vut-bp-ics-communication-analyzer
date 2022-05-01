@@ -61,6 +61,8 @@ class SettingsPanelWidget(QWidget):
         self.stat_widgets["Master Station"].set_value(str(data.station_ids[data.master_station_id]))
         self.stat_widgets["Slaves count"].set_value(len(data.slave_station_ids))
         self.stat_widgets["Resample rate"].set_value(str(data.resample_rate))
-        self.stat_widgets["Attribute"].set_value(data.attribute_name)
+        self.stat_widgets["Attribute"].set_value(
+            f"{data.attribute_name} ({len(data.attribute_values)} values selected)"
+        )
         self.stat_widgets["Direction"].set_value(direction)
         self.stat_widgets["Interval"].set_value(f"{ds} -- {de}")
