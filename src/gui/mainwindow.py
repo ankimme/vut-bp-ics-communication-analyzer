@@ -337,7 +337,9 @@ class MainWindow(QMainWindow):
                 self.thread.started.connect(self.worker.load_csv)
 
                 self.worker.csv_loaded.connect(self.load_csv_from_worker)
-                # self.worker.exception_raised.connect(TODO)
+                self.worker.exception_raised.connect(
+                    lambda: WarningMessageBox("Could not load CSV file with given configuartion", self).exec()
+                )
 
                 self.worker.finished.connect(self.thread.quit)
                 self.worker.finished.connect(self.worker.deleteLater)

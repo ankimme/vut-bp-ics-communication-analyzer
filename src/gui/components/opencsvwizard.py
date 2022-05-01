@@ -434,7 +434,7 @@ class PageSetDataTypes(QWizardPage):
             self.warning_label.setText(str(e))
             return False
         except ValueError as e:
-            self.warning_label.setText(f"Cannot parse. Please check the datatypes of columns. Exception details: {e}")
+            self.warning_label.setText(f"Cannot parse. Please check the datatypes of columns.")
             print(traceback.format_exc())
             return False
         except Exception as e:
