@@ -26,7 +26,7 @@ class TimeFrameViewTab(QTableView):
         self.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
 
     def update_model(self, data: EventData) -> None:
-        if data.attribute_name:
+        if data.attribute_name is not None:
             # filter rows TODO delete
             # filtered_pair_ids = dsa.get_connected_pairs(data.master_station_id, data.slave_station_ids, data.pair_ids)
             # tmpdf = data.df[data.df[data.fcn.pair_id].isin(filtered_pair_ids)]
@@ -46,4 +46,7 @@ class TimeFrameViewTab(QTableView):
             self.setModel(self.df_model)
             self.resizeColumnsToContents()
 
-            self.update()
+        else:
+            self.setModel(DataFrameModel(pd.DataFrame()))
+
+        self.update()

@@ -32,7 +32,6 @@ class SlavesPlotTab(QWidget):
         self.setLayout(layout)
 
     def update_plots(self, data: EventData) -> None:
-        assert all(col in data.df_working.columns for col in [data.fcn.timestamp, data.fcn.pair_id])
 
         self.canvas.axes.cla()
 

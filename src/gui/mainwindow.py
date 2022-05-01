@@ -144,6 +144,7 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.INTERVAL_CHANGED, settings_panel.update_panel)
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, settings_panel.update_panel)
         self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, settings_panel.update_panel)
+        self.event_handler.subscribe(EventType.ATTRIBUTE_VALUES_CHANGED, settings_panel.update_panel)
         main_layout.addWidget(settings_panel)
 
         # self.spinner = QtWaitingSpinner(self)
@@ -225,6 +226,7 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, attribute_stats_tab.update_tab)
         self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, attribute_stats_tab.update_tab)
         self.event_handler.subscribe(EventType.DIRECTION_CHANGED, attribute_stats_tab.update_tab)
+        self.event_handler.subscribe(EventType.INTERVAL_CHANGED, attribute_stats_tab.update_tab)
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, attribute_stats_tab.update_tab)
         self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, attribute_stats_tab.update_tab)
         self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, attribute_stats_tab.update_tab)

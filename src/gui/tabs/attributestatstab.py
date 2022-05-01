@@ -1,5 +1,7 @@
 # TODO doc
 
+import pandas as pd
+
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTableView
 from gui.components import MplCanvas
@@ -38,7 +40,7 @@ class AttributeStatsTab(QWidget):
         # return
         # TODO assert
         self.canvas.axes.cla()
-        if data.attribute_name:
+        if data.attribute_name is not None:
 
             if len(data.df_filtered.index) > 0 and len(data.attribute_values) > 0:
 
@@ -50,10 +52,10 @@ class AttributeStatsTab(QWidget):
                     self.canvas.axes,
                 )
 
-            self.canvas.draw()
+        self.canvas.draw()
 
     def update_table_data(self, data: EventData) -> None:
-        if data.attribute_name:
+        if data.attribute_name is not None:
             x = dsa.get_attribute_stats(
                 data.df_filtered,
                 data.fcn,
@@ -62,6 +64,8 @@ class AttributeStatsTab(QWidget):
             )
             self.attribute_stats_table.setModel(DataFrameModel(x))
             self.attribute_stats_table.resizeColumnsToContents()
+        else:
+            self.attribute_stats_table.setModel(DataFrameModel(pd.DataFrame()))
         # self.table_data.update_model(data.df)
 
         # tmpdf = data.df_og.loc[:, data.df_og.columns]
