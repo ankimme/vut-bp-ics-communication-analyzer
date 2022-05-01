@@ -386,6 +386,10 @@ class MainWindow(QMainWindow):
         # TODO
         pass
 
+    def show_about(self) -> None:
+        # TODO
+        pass
+
     def change_master_station(self) -> None:
         """Open dialog for master station selection.
 
@@ -530,17 +534,17 @@ class MainWindow(QMainWindow):
         menubar = QMenuBar()
 
         fileMenu = menubar.addMenu("&File")
-        editMenu = menubar.addMenu("&Edit")
+        filterMenu = menubar.addMenu("&Filter")
         helpMenu = menubar.addMenu("&Help")
 
         for action_name, qaction in self.actions.items():
             match action_name:
                 case "Load CSV" | "Exit":
                     fileMenu.addAction(qaction)
-                case "Show help":
+                case "Show help" | "About":
                     helpMenu.addAction(qaction)
                 case _:
-                    editMenu.addAction(qaction)
+                    filterMenu.addAction(qaction)
 
         return menubar
 
@@ -589,6 +593,11 @@ class MainWindow(QMainWindow):
         name = "Show help"
         actions[name] = QAction(text=name, parent=self)
         actions[name].triggered.connect(self.show_help)
+
+        # SHOW HELP #
+        name = "About"
+        actions[name] = QAction(text=name, parent=self)
+        actions[name].triggered.connect(self.show_about)
 
         # SELECT MASTER STATION #
         name = "Select master station"
