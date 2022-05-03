@@ -58,3 +58,14 @@ zvyrazneni radku v taulkach
 - 
 - threading aby se to neseklo pri nacitani ruznych veci
 
+
+
+vlnky mezi spojky
+url package
+ocitovat obrázky které jsem překreslil
+solid lines in graphs
+
+v implementaci popsat časova okna atributu jak se tam ty dataframy předělávají
+operavit out 3sigma values 
+
+najit bug ktery zpusobuje padani
