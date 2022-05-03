@@ -201,13 +201,13 @@ class MainWindow(QMainWindow):
 
         # TAB 4 #
         slave_plots_tab = SlavesPlotTab(self)
-        self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, slave_plots_tab.update_plots)
-        self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, slave_plots_tab.update_plots)
-        self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, slave_plots_tab.update_plots)
-        self.event_handler.subscribe(EventType.DIRECTION_CHANGED, slave_plots_tab.update_plots)
-        self.event_handler.subscribe(EventType.INTERVAL_CHANGED, slave_plots_tab.update_plots)
-        self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, slave_plots_tab.update_plots)
-        self.event_handler.subscribe(EventType.ATTRIBUTE_VALUES_CHANGED, slave_plots_tab.update_plots)
+        self.event_handler.subscribe(EventType.DATAFRAME_CHANGED, slave_plots_tab.update_tab)
+        self.event_handler.subscribe(EventType.MASTER_SLAVES_CHANGED, slave_plots_tab.update_tab)
+        self.event_handler.subscribe(EventType.RESAMPLE_RATE_CHANGED, slave_plots_tab.update_tab)
+        self.event_handler.subscribe(EventType.DIRECTION_CHANGED, slave_plots_tab.update_tab)
+        self.event_handler.subscribe(EventType.INTERVAL_CHANGED, slave_plots_tab.update_tab)
+        self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, slave_plots_tab.update_tab)
+        self.event_handler.subscribe(EventType.ATTRIBUTE_VALUES_CHANGED, slave_plots_tab.update_tab)
         tabs.addTab(slave_plots_tab, "Selected slaves")
 
         # TAB 5 #

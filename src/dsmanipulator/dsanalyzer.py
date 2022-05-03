@@ -37,6 +37,53 @@ def get_df_time_span(df: pd.DataFrame, fcn: FileColumnNames) -> pd.Timedelta:
     return df[fcn.timestamp].iloc[-1] - df[fcn.timestamp].iloc[0]
 
 
+def get_slaves_stats(
+    df: pd.DataFrame,
+    fcn: FileColumnNames,
+    master_station_id: int,
+    slave_station_ids: list[int],
+    station_ids: bidict[int, Station],
+    pair_ids: bidict[int, frozenset],
+) -> pd.DataFrame:
+
+    data = []
+    for slave_id in slave_station_ids:
+
+        pair_id = pair_ids.inv[frozenset({master_station_id, slave_id})]
+
+        row = []
+
+        row.append(station_ids[slave_id])
+
+        tmpdf = df[df[fcn.pair_id] == pair_id]
+
+        if len(tmpdf.index) > 0:
+            first = tmpdf[fcn.timestamp].iloc[0]
+            last = tmpdf[fcn.timestamp].iloc[-1]
+
+            row.append(first)
+            row.append(last)
+            row.append(last - first)
+            row.append(len(tmpdf.index))
+        else:
+            row.append("None")
+            row.append("None")
+            row.append("None")
+
+        data.append(row)
+
+    return pd.DataFrame(
+        data,
+        columns=[
+            "Slave address",
+            "First packet",
+            "Last packet",
+            "Duration",
+            "Count",
+        ],
+    )
+
+
 def get_attribute_stats(
     df: pd.DataFrame, fcn: FileColumnNames, attribute_name: str, resample_rate: pd.Timedelta
 ) -> pd.DataFrame:
@@ -324,7 +371,7 @@ def get_direction_ids_by_filter(
 def plot_pair_flow(
     df: pd.DataFrame,
     fcn: FileColumnNames,
-    axes: Axes,
+    ax: Axes,
     pair_id: int,
     station_ids: bidict[int, Station],
     direction_ids: bidict[int, Direction],
@@ -362,13 +409,13 @@ def plot_pair_flow(
     tmpdf.insert(0, "Sum", 0)
     tmpdf["Sum"] = tmpdf.sum(axis=1)
 
-    axes.set_xlabel("Time")
-    axes.set_ylabel("Packet count")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Packet count")
     # axes.set_title("Packet count in time")
-    axes.grid(True)
+    ax.grid(True)
 
-    axes.xaxis.set_major_locator(AutoDateLocator())
-    axes.xaxis.set_major_formatter(DateFormatter("%H:%M"))
+    ax.xaxis.set_major_locator(AutoDateLocator())
+    ax.xaxis.set_major_formatter(DateFormatter("%H:%M"))
 
     # plt.xlim([min(tmpdf.index), max(tmpdf.index)])
     # print(min(k))
@@ -376,7 +423,10 @@ def plot_pair_flow(
     # k = pd.DatetimeIndex(df[fcn.timestamp])
     # axes.set_xlim([min(k), max(k)])
 
-    sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=axes)
+    sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=ax)
+
+    for line in ax.lines:
+        line.set_linestyle("solid")
 
     # axes.xaxis.set_major_locator(AutoDateLocator())
     # axes.xaxis.set_major_formatter(DateFormatter("%H:%M"))
@@ -384,11 +434,13 @@ def plot_pair_flow(
     # plt.xlim([min(x), max(x)])
     # plt.ylim([0, max(y)])
 
+    ax.legend(loc="center right")
+
 
 def plot_slaves(
     df: pd.DataFrame,
     fcn: FileColumnNames,
-    axes: Axes,
+    ax: Axes,
     resample_rate: pd.Timedelta,
     master_station_id: int,
     station_ids: bidict[int, Station],
@@ -416,12 +468,17 @@ def plot_slaves(
     tmpdf = dsc.convert_to_timeseries(tmpdf, fcn)
     tmpdf = tmpdf.resample(resample_rate).sum()
 
-    axes.xaxis.set_major_locator(AutoDateLocator())
-    axes.xaxis.set_major_formatter(DateFormatter("%H:%M"))
+    ax.xaxis.set_major_locator(AutoDateLocator())
+    ax.xaxis.set_major_formatter(DateFormatter("%H:%M"))
 
-    axes.legend([], [], loc="center right", frameon=False)
+    # ax.legend([], [], loc="center right", frameon=False)
 
-    sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=axes)
+    sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=ax)
+
+    for line in ax.lines:
+        line.set_linestyle("solid")
+
+    ax.legend(loc="center right")
 
 
 def plot_attribute_values(
@@ -429,7 +486,7 @@ def plot_attribute_values(
     fcn: FileColumnNames,
     attribute_name: str,
     resample_rate: pd.Timedelta,
-    axes: Axes,
+    ax: Axes,
 ):
 
     tmpdf = df.loc[:, [fcn.timestamp, attribute_name]]
@@ -441,14 +498,19 @@ def plot_attribute_values(
 
     left_xlim = min(tmpdf.index)
     right_xlim = max(tmpdf.index)
-    axes.set_xlim([left_xlim, right_xlim])
+    ax.set_xlim([left_xlim, right_xlim])
 
-    axes.xaxis.set_major_locator(AutoDateLocator())
-    axes.xaxis.set_major_formatter(DateFormatter("%H:%M"))
+    ax.xaxis.set_major_locator(AutoDateLocator())
+    ax.xaxis.set_major_formatter(DateFormatter("%H:%M"))
 
-    axes.legend([], [], loc="center right", frameon=False)
+    # ax.legend([], [], loc="center right", frameon=False)
 
-    sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=axes)
+    sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=ax)
+
+    ax.legend(loc="center right")
+
+    for line in ax.lines:
+        line.set_linestyle("solid")
 
 
 # endregion
