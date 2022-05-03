@@ -60,6 +60,7 @@ def get_attribute_stats(
         row.append(tmpdf[attribute_value].quantile(q=0.25))
         row.append(tmpdf[attribute_value].median())
         row.append(tmpdf[attribute_value].quantile(q=0.75))
+        row.append(tmpdf[attribute_value].quantile(q=0.75) - tmpdf[attribute_value].quantile(q=0.25))
         row.append(mean - 3 * std)
         row.append(mean + 3 * std)
         row.append((mean + 3 * std) - (mean - 3 * std))
@@ -77,6 +78,7 @@ def get_attribute_stats(
             "Quantile 25%",
             "Median",
             "Quantile 75%",
+            "IQR",
             "Minus 3 sigma",
             "Plus 3 sigma",
             "3 sigma interval size",
@@ -417,7 +419,7 @@ def plot_slaves(
     axes.xaxis.set_major_locator(AutoDateLocator())
     axes.xaxis.set_major_formatter(DateFormatter("%H:%M"))
 
-    axes.legend([], [], frameon=False)
+    axes.legend([], [], loc="center right", frameon=False)
 
     sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=axes)
 
@@ -444,7 +446,7 @@ def plot_attribute_values(
     axes.xaxis.set_major_locator(AutoDateLocator())
     axes.xaxis.set_major_formatter(DateFormatter("%H:%M"))
 
-    axes.legend([], [], frameon=False)
+    axes.legend([], [], loc="center right", frameon=False)
 
     sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=axes)
 
