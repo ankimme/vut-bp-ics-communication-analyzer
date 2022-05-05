@@ -1,18 +1,15 @@
-from re import A
-from matplotlib.dates import DateFormatter, AutoDateLocator
-from matplotlib.axes import Axes
-
+import random
+from bidict import bidict
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from matplotlib.dates import DateFormatter, AutoDateLocator
+from matplotlib.axes import Axes
+
 from dsmanipulator import dscreator as dsc
-from dsmanipulator.utils import Direction, FileColumnNames, Station, DirectionEnum
+from dsmanipulator.dataobjects import Direction, FileColumnNames, Station, DirectionEnum
 
-
-import random
-
-from bidict import bidict
 
 # region Dataframe Insights
 

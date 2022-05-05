@@ -9,10 +9,10 @@ Date
 March 2022
 """
 
-from datetime import datetime
 import os
-from bidict import bidict
 import pandas as pd
+from datetime import datetime
+from bidict import bidict
 
 from PyQt6.QtCore import Qt, QThread, pyqtSlot
 from PyQt6.QtWidgets import (
@@ -22,24 +22,24 @@ from PyQt6.QtWidgets import (
     QMenuBar,
     QFileDialog,
     QTabWidget,
-    QMessageBox,
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
     QWidget,
 )
-from PyQt6.QtGui import QIcon, QAction, QFont
+from PyQt6.QtGui import QAction, QFont
 
-from dsmanipulator import dsloader as dsl
 from dsmanipulator import dscreator as dsc
 from dsmanipulator import dsanalyzer as dsa
+from dsmanipulator.dataobjects import Direction, Station, FileColumnNames, DirectionEnum
 
 from gui.workers import LoadCsvWorker
-
-from gui.components import OpenCsvWizard, SettingsPanelWidget, QtWaitingSpinner
+from gui.opencsvwizard import OpenCsvWizard
+from gui.widgets import SettingsPanelWidget
+from gui.qtwaitingspinner import QtWaitingSpinner
 from gui.tabs import OriginalDfTab, StatsTab, PairPlotsTab, SlavesPlotTab, TimeFrameViewTab, AttributeStatsTab
-from gui.utils import EventType, EventHandler, EventData
-from gui.components import (
+from gui.eventhandler import EventType, EventHandler, EventData
+from gui.dialogs import (
     SelectMasterStationsDialog,
     SelectSlavesDialog,
     ChangeResampleRateDialog,
@@ -49,7 +49,6 @@ from gui.components import (
     ChangeIntervalDialog,
     ChangeDirectionDialog,
 )
-from dsmanipulator.utils import Direction, Station, FileColumnNames, DirectionEnum
 
 
 class MainWindow(QMainWindow):

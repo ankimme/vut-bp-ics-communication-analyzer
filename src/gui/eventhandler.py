@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from bidict import bidict
 import pandas as pd
 
-from dsmanipulator.utils import FileColumnNames, Direction, Station, DirectionEnum
+from dsmanipulator.dataobjects import FileColumnNames, Direction, Station, DirectionEnum
 
 
 # TODO doc

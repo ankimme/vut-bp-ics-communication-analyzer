@@ -1,4 +1,4 @@
-"""A simple infopanel that shows user settings.
+"""TODO
 
 Author
 ------
@@ -6,15 +6,67 @@ Andrea Chimenti
 
 Date
 ----
-April 2022
+March 2022
 """
 
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+
+from PyQt6.QtWidgets import QWidget, QLabel
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QWidget, QGridLayout
 
-from gui.components import InfoLabel
-from gui.utils import EventData
-from dsmanipulator.utils import DirectionEnum
+from dsmanipulator.dataobjects import DirectionEnum
+
+from gui.eventhandler import EventData
+
+
+class InfoLabel(QLabel):
+    """A label showing formatted information.
+
+    Format
+    ------
+    Property: Value
+    """
+
+    def __init__(self, property: str, parent: QWidget = None):
+        """Init InfoLabel class with empty value.
+
+        Parameters
+        ----------
+        property : str
+            Property name.
+        parent : QWidget, optional
+            Parent.
+        """
+        super().__init__(parent)
+        self._property = property
+
+        self.set_value("")
+
+    def set_value(self, new_value: str | int | float):
+        """Set value of label without changing property.
+
+        Parameters
+        ----------
+        new_value : str | int | float
+            A new value the label will display.
+        """
+        if type(new_value) == float:
+            self.setText(f"{self._property}: {new_value:.3f}")
+        else:
+            self.setText(f"{self._property}: {new_value}")
+
+
+class MplCanvas(FigureCanvasQTAgg):
+    def __init__(self, parent=None, width=5, height=4, dpi=300) -> None:
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        fig.set_tight_layout(True)
+
+        super().__init__(fig)
+
+        self.axes = fig.add_subplot(111)
+        self.setParent(parent)
 
 
 class SettingsPanelWidget(QWidget):

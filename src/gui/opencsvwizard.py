@@ -35,10 +35,10 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSlot
 
-
-from gui.utils import ListModel
 from dsmanipulator import dsloader as dsl
-from dsmanipulator import FileColumnNames
+from dsmanipulator.dataobjects import FileColumnNames
+
+from gui.datamodels import ListModel
 
 
 class OpenCsvWizard(QWizard):

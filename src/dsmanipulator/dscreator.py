@@ -1,12 +1,8 @@
-from collections import namedtuple
 import numpy as np
 import pandas as pd
-
 from bidict import bidict
-from pyparsing import col
 
-from .utils.dataobjects import CommunicationPair, Direction, FileColumnNames, Station
-
+from dsmanipulator.dataobjects import CommunicationPair, Direction, FileColumnNames, Station
 
 # region Utilities
 

@@ -3,7 +3,7 @@ import csv
 
 from dsmanipulator import dsloader as dsl
 
-from PyQt6.QtCore import QObject, QThread, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal
 
 
 class LoadCsvWorker(QObject):

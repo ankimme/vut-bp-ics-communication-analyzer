@@ -2,8 +2,6 @@ import csv
 import numpy as np
 import pandas as pd
 
-from .utils.dataobjects import FileColumnNames
-
 
 def load_data(file_name: str, data_types: dict[str, str], dialect: csv.Dialect, row_limit: int = None) -> pd.DataFrame:
     # todo df must have 'srcIP', 'srcPort', 'dstIP', 'dstPort', 'TimeStamp'
