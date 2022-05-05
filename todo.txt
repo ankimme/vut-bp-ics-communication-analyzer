@@ -69,3 +69,9 @@ v implementaci popsat časova okna atributu jak se tam ty dataframy předěláva
 operavit out 3sigma values 
 
 najit bug ktery zpusobuje padani
+
+popsat vykradeni waiting spinner
+smazat z kodu komentare
+udelat dokumentaci
+manual
+code shipping

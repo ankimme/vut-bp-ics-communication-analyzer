@@ -1,0 +1,21 @@
+src/
+├── dsmanipulator
+│   ├── __init__.py
+│   ├── dataobjects.py
+│   ├── dsanalyzer.py
+│   ├── dscreator.py
+│   ├── dsloader.py
+├── gui
+│   ├── __init__.py
+│   ├── datamodels.py
+│   ├── dialogs.py
+│   ├── eventhandler.py
+│   ├── opencsvwizard.py
+│   ├── qtwaitingspinner.py
+│   ├── tabs.py
+│   ├── widgets.py
+│   ├── windows.py
+│   └── workers.py
+└─── main.py
+
+2 directories, 16 files
