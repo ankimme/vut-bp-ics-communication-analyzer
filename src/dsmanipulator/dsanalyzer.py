@@ -66,6 +66,7 @@ def get_slaves_stats(
             row.append("None")
             row.append("None")
             row.append("None")
+            row.append("None")
 
         data.append(row)
 
@@ -431,7 +432,7 @@ def plot_pair_flow(
     # plt.xlim([min(x), max(x)])
     # plt.ylim([0, max(y)])
 
-    ax.legend(loc="center right")
+    ax.legend(loc="upper right")
 
 
 def plot_slaves(
@@ -475,7 +476,7 @@ def plot_slaves(
     for line in ax.lines:
         line.set_linestyle("solid")
 
-    ax.legend(loc="center right")
+    ax.legend(loc="upper right")
 
 
 def plot_attribute_values(
@@ -504,7 +505,7 @@ def plot_attribute_values(
 
     sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=ax)
 
-    ax.legend(loc="center right")
+    ax.legend(loc="upper right")
 
     for line in ax.lines:
         line.set_linestyle("solid")
