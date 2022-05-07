@@ -13,29 +13,8 @@ def load_data(file_name: str, data_types: dict[str, str], dialect: csv.Dialect, 
 
     df = pd.read_csv(file_name, dialect=dialect, dtype=col_types, nrows=row_limit, na_values=[""])
 
-    # df = df.astype({k: "str" for k, v in col_types.items() if v == "object"})
-
     for col_name in date_time_columns:
         df[col_name] = pd.to_datetime(df[col_name])
-
-    # # TODO accept some Nones
-    # if any(value is None for value in col_names.__dict__.values()):
-    #     raise Exception()
-
-    # TODO delete
-    # df = df.rename(
-    #     columns={
-    #         col_name.timestamp: "timeStamp",
-    #         col_names.rel_time: "relTime",
-    #         col_names.src_ip: "srcIp",
-    #         col_names.dst_ip: "dstIp",
-    #         col_names.src_port: "srcPort",
-    #         col_names.dst_port: "dstPort",
-    #     }
-    # )
-
-    # TODO exceptions
-    # df["timeStamp"] = pd.to_datetime(df["timeStamp"])
 
     return df
 
@@ -148,6 +127,7 @@ def detect_columns(file_name: str, dialect: csv.Dialect, row_limit: int = 10000)
     # cast unsupported data types (not datetime, float or object) to object
     detected_cols = {k: (v if v in ["datetime", "float", "object"] else "object") for k, v in detected_cols.items()}
 
+    # TODO optimalized for IEC 104 attribute?
     predefined_types: dict[str, str] = {}
     predefined_types["TimeStamp"] = "datetime"
     predefined_types["Relative Time"] = "float"
@@ -170,8 +150,3 @@ def detect_columns(file_name: str, dialect: csv.Dialect, row_limit: int = 10000)
     detected_cols.update({k: v for k, v in predefined_types.items() if k in detected_cols.keys()})
 
     return detected_cols
-
-
-def detect_datetime():
-    # TODO
-    pass

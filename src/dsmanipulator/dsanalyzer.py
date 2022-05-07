@@ -7,8 +7,8 @@ import seaborn as sns
 from matplotlib.dates import DateFormatter, AutoDateLocator
 from matplotlib.axes import Axes
 
-from dsmanipulator import dscreator as dsc
-from dsmanipulator.dataobjects import Direction, FileColumnNames, Station, DirectionEnum
+from . import dscreator as dsc
+from .dataobjects import Direction, FileColumnNames, Station, DirectionEnum
 
 
 # region Dataframe Insights

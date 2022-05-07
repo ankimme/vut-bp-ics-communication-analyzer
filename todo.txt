@@ -75,3 +75,26 @@ smazat z kodu komentare
 udelat dokumentaci
 manual
 code shipping
+zkontrolovat odkazy
+
+
+
+\section{Možnosti rozšíření}
+
+- paralelizace
+- dopočet relativního času
+
+
+todo
+dokumentace
+obrazky v high res
+appendix prazdna strana
+split subfigures into multiple pages
+uvod a zaver
+
+
+
+DOTAZY
+
+JAK UVEST CITACI KVARTILU Z PREZENTACE UPA
+Přesunout uživatelské rozranní do implementace?

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from bidict import bidict
 
-from dsmanipulator.dataobjects import CommunicationPair, Direction, FileColumnNames, Station
+from .dataobjects import CommunicationPair, Direction, FileColumnNames, Station
 
 # region Utilities
 
@@ -657,20 +657,5 @@ def expand_values_to_columns(
 
     return df
 
-
-# endregion
-
-# region Filters
-
-# Vraci df vyfiltrovany podle absolutniho casu (vcetne hranicnich hodnot)
-# def filter_by_time_abs(df: pd.DataFrame, start: datetime, end: datetime) -> pd.DataFrame:
-#     return df[(df['TimeStamp'] >= start) & (df['TimeStamp'] <= end)]
-
-# # Vraci df vyfiltrovany podle relativniho casu (vcetne hranicnich hodnot)
-# def filter_by_time_rel(df: pd.DataFrame, end: float) -> pd.DataFrame:
-#     return filter_by_time_rel(df, 0.0, end)
-
-# def filter_by_time_rel(df: pd.DataFrame, start: float, end: float) -> pd.DataFrame:
-#     return df[(df['Relative Time'] >= start) & (df['Relative Time'] <= end)]
 
 # endregion

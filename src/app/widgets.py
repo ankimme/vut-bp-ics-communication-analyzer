@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import QWidget, QGridLayout
 
 from dsmanipulator.dataobjects import DirectionEnum
 
-from gui.eventhandler import EventData
+from app.eventhandler import EventData
 
 
 class InfoLabel(QLabel):

@@ -25,9 +25,9 @@ from dsmanipulator import dscreator as dsc
 from dsmanipulator import dsanalyzer as dsa
 from dsmanipulator.dataobjects import DirectionEnum
 
-from gui.datamodels import DataFrameModel
-from gui.eventhandler import EventData
-from gui.widgets import MplCanvas, InfoLabel
+from app.datamodels import DataFrameModel
+from app.eventhandler import EventData
+from app.widgets import MplCanvas, InfoLabel
 
 
 class OriginalDfTab(QTableView):

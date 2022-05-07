@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
 
 from dsmanipulator.dataobjects import DirectionEnum, Station
 
-from gui.widgets import InfoLabel
+from app.widgets import InfoLabel
 
 
 class WarningMessageBox(QMessageBox):

@@ -13,7 +13,7 @@ March 2022
 
 import sys
 from PyQt6.QtWidgets import QApplication
-from gui import MainWindow
+from app import MainWindow
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

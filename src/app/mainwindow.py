@@ -33,13 +33,13 @@ from dsmanipulator import dscreator as dsc
 from dsmanipulator import dsanalyzer as dsa
 from dsmanipulator.dataobjects import Direction, Station, FileColumnNames, DirectionEnum
 
-from gui.workers import LoadCsvWorker
-from gui.opencsvwizard import OpenCsvWizard
-from gui.widgets import SettingsPanelWidget
-from gui.qtwaitingspinner import QtWaitingSpinner
-from gui.tabs import OriginalDfTab, StatsTab, PairPlotsTab, SlavesPlotTab, TimeFrameViewTab, AttributeStatsTab
-from gui.eventhandler import EventType, EventHandler, EventData
-from gui.dialogs import (
+from app.workers import LoadCsvWorker
+from app.opencsvwizard import OpenCsvWizard
+from app.widgets import SettingsPanelWidget
+from app.qtwaitingspinner import QtWaitingSpinner
+from app.tabs import OriginalDfTab, StatsTab, PairPlotsTab, SlavesPlotTab, TimeFrameViewTab, AttributeStatsTab
+from app.eventhandler import EventType, EventHandler, EventData
+from app.dialogs import (
     SelectMasterStationsDialog,
     SelectSlavesDialog,
     ChangeResampleRateDialog,

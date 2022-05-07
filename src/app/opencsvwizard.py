@@ -38,7 +38,7 @@ from PyQt6.QtCore import Qt, pyqtSlot
 from dsmanipulator import dsloader as dsl
 from dsmanipulator.dataobjects import FileColumnNames
 
-from gui.datamodels import ListModel
+from app.datamodels import ListModel
 
 
 class OpenCsvWizard(QWizard):
