@@ -1,3 +1,4 @@
+from contextlib import redirect_stderr
 import random
 from bidict import bidict
 import numpy as np
@@ -92,6 +93,13 @@ def get_attribute_stats(
     tmpdf = tmpdf.resample(resample_rate).sum()
     tmpdf = tmpdf.rename(columns={og: og.lstrip(f"{attribute_name}:") for og in tmpdf.columns})
 
+    # remove first and last time window
+    if len(tmpdf.index) > 2:
+        tmpdf = tmpdf.iloc[1:-1]
+    # return empty dataframe if not enough time windows
+    else:
+        return pd.DataFrame()
+
     data = []
     for attribute_value in tmpdf.columns:
         mean = tmpdf[attribute_value].mean()
@@ -109,7 +117,12 @@ def get_attribute_stats(
         row.append(mean - 3 * std)
         row.append(mean + 3 * std)
         row.append((mean + 3 * std) - (mean - 3 * std))
-        row.append(len(tmpdf[attribute_value].loc[lambda x: ~x.between(mean - 3 * std, mean + 3 * std)]))
+
+        outlier_count = len(tmpdf[attribute_value].loc[lambda x: ~x.between(mean - 3 * std, mean + 3 * std)])
+        total = len(tmpdf[attribute_value])
+        percentage = outlier_count / total * 100 if total > 0 else 0
+
+        row.append(f"{outlier_count}/{total} ({percentage:.2f} %)")
 
         data.append(row)
 
@@ -493,6 +506,10 @@ def plot_attribute_values(
     tmpdf = dsc.expand_values_to_columns(tmpdf, attribute_name)
     tmpdf = tmpdf.resample(resample_rate).sum()
     tmpdf = tmpdf.rename(columns={og: og.lstrip(f"{attribute_name}:") for og in tmpdf.columns})
+
+    # remove first and last time window
+    if len(tmpdf.index) > 2:
+        tmpdf = tmpdf.iloc[1:-1]
 
     left_xlim = min(tmpdf.index)
     right_xlim = max(tmpdf.index)

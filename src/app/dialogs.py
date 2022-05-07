@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QDateTimeEdit,
 )
 
+from dsmanipulator import dsanalyzer as dsa
 from dsmanipulator.dataobjects import DirectionEnum, Station
 
 from app.widgets import InfoLabel

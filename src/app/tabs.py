@@ -196,8 +196,8 @@ class StatsTab(QScrollArea):
         s2m_percentage = s2m_packet_count / total_packet_count * 100 if total_packet_count > 0 else 0
 
         self.og_stat_widgets["Total packets"].set_value(total_packet_count)
-        self.og_stat_widgets["Master to slave packets"].set_value(f"{m2s_packet_count} ({m2s_percentage:.2f}%)")
-        self.og_stat_widgets["Slave to master packets"].set_value(f"{s2m_packet_count} ({s2m_percentage:.2f}%)")
+        self.og_stat_widgets["Master to slave packets"].set_value(f"{m2s_packet_count} ({m2s_percentage:.2f} %)")
+        self.og_stat_widgets["Slave to master packets"].set_value(f"{s2m_packet_count} ({s2m_percentage:.2f} %)")
 
         self.og_stat_widgets["File name"].set_value(os.path.basename(data.file_path))
         self.og_stat_widgets["Column count"].set_value(len(data.df_og.columns))
@@ -251,8 +251,8 @@ class StatsTab(QScrollArea):
         m2s_percentage = m2s_packet_count / total_packet_count * 100 if total_packet_count > 0 else 0
         s2m_percentage = s2m_packet_count / total_packet_count * 100 if total_packet_count > 0 else 0
         self.work_stat_widgets["Total packets"].set_value(total_packet_count)
-        self.work_stat_widgets["Master to slave packets"].set_value(f"{m2s_packet_count} ({m2s_percentage:.2f}%)")
-        self.work_stat_widgets["Slave to master packets"].set_value(f"{s2m_packet_count} ({s2m_percentage:.2f}%)")
+        self.work_stat_widgets["Master to slave packets"].set_value(f"{m2s_packet_count} ({m2s_percentage:.2f} %)")
+        self.work_stat_widgets["Slave to master packets"].set_value(f"{s2m_packet_count} ({s2m_percentage:.2f} %)")
 
         for i in reversed(range(self.content_layout.count())):
             self.content_layout.itemAt(i).widget().setParent(None)
@@ -446,6 +446,10 @@ class TimeFrameViewTab(QTableView):
             tmpdf = tmpdf.resample(data.resample_rate).sum()
             tmpdf = tmpdf.rename(columns={og: og.lstrip(f"{data.attribute_name}:") for og in tmpdf.columns})
 
+            # remove first and last time window
+            if len(tmpdf.index) > 2:
+                tmpdf = tmpdf.iloc[1:-1]
+
             tmpdf.reset_index(inplace=True)
 
             self.df_model = DataFrameModel(tmpdf)
@@ -504,7 +508,7 @@ class AttributeStatsTab(QWidget):
         self.canvas.draw()
 
     def update_table_data(self, data: EventData) -> None:
-        if data.attribute_name is not None:
+        if data.attribute_name is not None and len(data.df_filtered.index) > 0:
             x = dsa.get_attribute_stats(
                 data.df_filtered,
                 data.fcn,
