@@ -5,6 +5,8 @@ pozn.txt
 # environment
 env/
 env_final/
+env_new/
+ics_analyzer/env_2/
 
 # pycache
 __pycache__/
