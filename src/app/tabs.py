@@ -3,6 +3,7 @@
 import os
 import numpy as np
 import pandas as pd
+import datetime
 
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT
 
@@ -62,9 +63,6 @@ class StatsTab(QScrollArea):
 
         self.setWidgetResizable(True)
 
-        # self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        # self.setStyleSheet("background-color: white;")
-
         grid_layout = QGridLayout()
         grid_layout.setColumnStretch(0, 1)
         grid_layout.setColumnStretch(1, 1)
@@ -79,10 +77,10 @@ class StatsTab(QScrollArea):
             "Total packets",
             "Master to slave packets",
             "Slave to master packets",
-            "IAT mean",
-            "IAT median",
-            "IAT min",
-            "IAT max",
+            "Inter-arrival time mean",
+            "Inter-arrival time median",
+            "Inter-arrival time min",
+            "Inter-arrival time max",
             "Pairs count",
             "File name",
             "Column count",
@@ -110,10 +108,10 @@ class StatsTab(QScrollArea):
             "Total packets",
             "Master to slave packets",
             "Slave to master packets",
-            "IAT mean",
-            "IAT median",
-            "IAT min",
-            "IAT max",
+            "Inter-arrival time mean",
+            "Inter-arrival time median",
+            "Inter-arrival time min",
+            "Inter-arrival time max",
             "Unique values of attributes",
         ]
 
@@ -210,25 +208,36 @@ class StatsTab(QScrollArea):
         self.og_stat_widgets["Time span"].set_value(dsa.get_df_time_span(data.df_working, data.fcn))
         self.og_stat_widgets["Pairs count"].set_value(len(data.pair_ids))
 
+        print(data.df_og.dtypes)
         s = "\n"
-        for iat_mean, iat_median in data.df_og.dtypes.items():
-            pad = 25 - len(iat_mean)
+        for col_name, col_type in data.df_og.dtypes.items():
+            pad = 25 - len(col_name)
             filler = " "
-            s += f"{iat_mean}{filler*pad}{iat_median}\n"
+
+            if col_type == np.dtype("datetime64[ns]"):
+                col_type_str = "datetime"
+            elif col_type == np.dtype("float64"):
+                col_type_str = "numeric"
+            elif col_type == np.dtype("object"):
+                col_type_str = "string"
+            else:
+                col_type_str = "unknown"
+
+            s += f"{col_name}{filler*pad}{col_type_str}\n"
 
         self.og_stat_widgets["Column types"].set_value(s)
 
         if data.fcn.rel_time in data.df_working:
             iat_mean, iat_median, iat_min, iat_max = dsa.get_iat_stats_whole_df(data.df_working, data.fcn)
-            self.og_stat_widgets["IAT mean"].set_value(iat_mean)
-            self.og_stat_widgets["IAT median"].set_value(iat_median)
-            self.og_stat_widgets["IAT min"].set_value(iat_min)
-            self.og_stat_widgets["IAT max"].set_value(iat_max)
+            self.og_stat_widgets["Inter-arrival time mean"].set_value(f"{iat_mean:g}")
+            self.og_stat_widgets["Inter-arrival time median"].set_value(f"{iat_median:g}")
+            self.og_stat_widgets["Inter-arrival time min"].set_value(f"{iat_min:g}")
+            self.og_stat_widgets["Inter-arrival time max"].set_value(f"{iat_max:g}")
         else:
-            self.og_stat_widgets["IAT mean"].set_value("Missing relative time")
-            self.og_stat_widgets["IAT median"].set_value("Missing relative time")
-            self.og_stat_widgets["IAT min"].set_value("Missing relative time")
-            self.og_stat_widgets["IAT max"].set_value("Missing relative time")
+            self.og_stat_widgets["Inter-arrival time mean"].set_value("Missing relative time")
+            self.og_stat_widgets["Inter-arrival time median"].set_value("Missing relative time")
+            self.og_stat_widgets["Inter-arrival time min"].set_value("Missing relative time")
+            self.og_stat_widgets["Inter-arrival time max"].set_value("Missing relative time")
 
     def update_work_stats(self, data: EventData) -> None:
         total_packet_count = len(data.df_filtered.index)
@@ -286,23 +295,23 @@ class StatsTab(QScrollArea):
                 iat_mean, iat_median, iat_min, iat_max = dsa.get_iat_stats_filtered(
                     data.df_filtered, data.fcn, data.master_station_id, data.slave_station_ids, data.pair_ids
                 )
-                self.work_stat_widgets["IAT mean"].set_value(iat_mean)
-                self.work_stat_widgets["IAT median"].set_value(iat_median)
-                self.work_stat_widgets["IAT min"].set_value(iat_min)
-                self.work_stat_widgets["IAT max"].set_value(iat_max)
+                self.work_stat_widgets["Inter-arrival time mean"].set_value(f"{iat_mean:g}")
+                self.work_stat_widgets["Inter-arrival time median"].set_value(f"{iat_median:g}")
+                self.work_stat_widgets["Inter-arrival time min"].set_value(f"{iat_min:g}")
+                self.work_stat_widgets["Inter-arrival time max"].set_value(f"{iat_max:g}")
             else:
-                self.work_stat_widgets["IAT mean"].set_value("Missing relative time")
-                self.work_stat_widgets["IAT median"].set_value("Missing relative time")
-                self.work_stat_widgets["IAT min"].set_value("Missing relative time")
-                self.work_stat_widgets["IAT max"].set_value("Missing relative time")
+                self.work_stat_widgets["Inter-arrival time mean"].set_value("Missing relative time")
+                self.work_stat_widgets["Inter-arrival time median"].set_value("Missing relative time")
+                self.work_stat_widgets["Inter-arrival time min"].set_value("Missing relative time")
+                self.work_stat_widgets["Inter-arrival time max"].set_value("Missing relative time")
         else:
             self.work_stat_widgets["Start time"].set_value("")
             self.work_stat_widgets["End time"].set_value("")
             self.work_stat_widgets["Time span"].set_value("")
-            self.work_stat_widgets["IAT mean"].set_value("")
-            self.work_stat_widgets["IAT median"].set_value("")
-            self.work_stat_widgets["IAT min"].set_value("")
-            self.work_stat_widgets["IAT max"].set_value("")
+            self.work_stat_widgets["Inter-arrival time mean"].set_value("")
+            self.work_stat_widgets["Inter-arrival time median"].set_value("")
+            self.work_stat_widgets["Inter-arrival time min"].set_value("")
+            self.work_stat_widgets["Inter-arrival time max"].set_value("")
 
     @pyqtSlot()
     def show_unique_values(self):

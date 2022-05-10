@@ -422,8 +422,8 @@ def plot_pair_flow(
 
     ax.set_xlabel("Time")
     ax.set_ylabel("Packet count")
-    # axes.set_title("Packet count in time")
     ax.grid(True)
+    # axes.set_title("Packet count in time")
 
     ax.xaxis.set_major_locator(AutoDateLocator())
     ax.xaxis.set_major_formatter(DateFormatter("%H:%M"))
@@ -479,6 +479,10 @@ def plot_slaves(
     tmpdf = dsc.convert_to_timeseries(tmpdf, fcn)
     tmpdf = tmpdf.resample(resample_rate).sum()
 
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Packet count")
+    ax.grid(True)
+
     ax.xaxis.set_major_locator(AutoDateLocator())
     ax.xaxis.set_major_formatter(DateFormatter("%H:%M"))
 
@@ -514,6 +518,10 @@ def plot_attribute_values(
     left_xlim = min(tmpdf.index)
     right_xlim = max(tmpdf.index)
     ax.set_xlim([left_xlim, right_xlim])
+
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Packet count")
+    ax.grid(True)
 
     ax.xaxis.set_major_locator(AutoDateLocator())
     ax.xaxis.set_major_formatter(DateFormatter("%H:%M"))

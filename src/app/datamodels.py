@@ -55,7 +55,15 @@ class DataFrameModel(QAbstractTableModel):
             return None
 
         if role == Qt.ItemDataRole.DisplayRole:
-            return str(self._df.iloc[index.row(), index.column()])
+            try:
+                val = self._df.iloc[index.row(), index.column()]
+            except IndexError:
+                return "ERROR"
+
+            if isinstance(val, float):
+                return f"{val:g}"
+            else:
+                return str(val)
 
         return None
 
@@ -66,10 +74,26 @@ class DataFrameModel(QAbstractTableModel):
         """
         if role == Qt.ItemDataRole.DisplayRole:
             if orientation == Qt.Orientation.Horizontal:
-                return str(self._df.columns[section])
+                try:
+                    val = self._df.columns[section]
+                except IndexError:
+                    return "ERROR"
+
+                if isinstance(val, float):
+                    return f"{val:g}"
+                else:
+                    return str(val)
 
             if orientation == Qt.Orientation.Vertical:
-                return str(self._df.index[section])
+                try:
+                    val = self._df.index[section]
+                except IndexError:
+                    return "ERROR"
+
+                if isinstance(val, float):
+                    return f"{val:g}"
+                else:
+                    return str(val)
 
         return None
 

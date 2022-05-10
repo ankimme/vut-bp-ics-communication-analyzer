@@ -1,100 +1,21 @@
-Exceptions: file does not exists
-
-Spíše než predikci udělat statistickou analýzu jestli hodnoty můžou sedět výkyvumů
-Systém arima pro predikci? S časovou řadou
-
-Popsat experimenty na útocích
-
--------------------------
-
-TRIBUTE ICONS
-https://p.yusukekamiyamane.com/
-
-
-
-zobrazeni diskretni tabulky i s histogramem jednotlivych trid
-
-
-kontrola ze timestamp ma spravny typ pri nacteni
-reagovat na event u timeframe view
-
-
-
-u komunikacnich dvojic udelat lepsi legendy
-proc zacina tak nahore
-
-
-
-
-
-
-hledat stabilitu hodnot, set druhy s periodicitou
-
-
-
-zminit v uvodu kazdou podkapitolku
-
-
-datum 1900 a rucni nastaven
-
-u komunikace se slavy dat tri grafy pro kazdy smer 
-
-zvyraznineni uzkych hodnot
-
-X p5eindexovani
-
-X volby atributu
-
-X dat do statistik inter arrival time
-
-X add scrollable to stats
-
-
-Kdyz bude cas:
-
-zvyrazneni radku v taulkach
-- time frame view: ty co jsou mimo +-3 sigma
-- u attribute stats ty co jsou zvolene tak podbarvit a vysedit ty co maji zaporne -3 sigma
-- 
-- threading aby se to neseklo pri nacitani ruznych veci
-
-
-
-vlnky mezi spojky
-url package
-ocitovat obrázky které jsem překreslil
-solid lines in graphs
-
-v implementaci popsat časova okna atributu jak se tam ty dataframy předělávají
-operavit out 3sigma values 
-
-najit bug ktery zpusobuje padani
-
 popsat vykradeni waiting spinner
+
 smazat z kodu komentare
-udelat dokumentaci
-manual
+
+readme
+
 code shipping
-zkontrolovat odkazy
 
-
-
-\section{Možnosti rozšíření}
-
-- paralelizace
-- dopočet relativního času
-
-
-todo
 dokumentace
-obrazky v high res
-appendix prazdna strana
-split subfigures into multiple pages
-uvod a zaver
 
+ikona aplikace
 
+add exception handling everywhere
 
-DOTAZY
+kody označit hlavičkou
 
-JAK UVEST CITACI KVARTILU Z PREZENTACE UPA
-Přesunout uživatelské rozranní do implementace?
+odtranit nepouzite obrazky v latexu
+
+add scroll to attribute value and check ioa scanning attack
+
+napoveda
