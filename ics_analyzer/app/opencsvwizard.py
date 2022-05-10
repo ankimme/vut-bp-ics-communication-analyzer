@@ -14,7 +14,6 @@ March 2022
 import csv
 import pandas as pd
 from bidict import bidict
-import traceback  # TODO delete
 
 
 from PyQt6.QtWidgets import (
@@ -73,7 +72,7 @@ class OpenCsvWizard(QWizard):
 
         # pages can use and update this variables
         self.file_name: str = file_name
-        self.dialect: csv.Dialect = dsl.detect_dialect(file_name)  # TODO exceptions kdyz bude chybny vstup
+        self.dialect: csv.Dialect = dsl.detect_dialect(file_name)
         self.col_types_by_user: dict[str, TypeComboBox]
         self.fcn: FileColumnNames
 
@@ -239,10 +238,6 @@ class PageSetDataTypes(QWizardPage):
         self.grid_layout.addWidget(QLabel("Data type"), 0, 1, Qt.AlignmentFlag.AlignCenter)
 
         self.grid_layout.addWidget(QLabel("Time stamp"), 0, 2, Qt.AlignmentFlag.AlignCenter)
-        # b = QPushButton("Reset")
-        # b.clicked.connect(lambda: self.deselect_group(self.groups["timestamp"]))
-        # b.clicked.connect(lambda: self.clear_file_col_names(self.groups["timestamp"]))
-        # self.grid_layout.addWidget(b, 1, 2, Qt.AlignmentFlag.AlignCenter)
 
         self.grid_layout.addWidget(QLabel("Rel time"), 0, 3, Qt.AlignmentFlag.AlignCenter)
         b = QPushButton("None")
@@ -251,10 +246,6 @@ class PageSetDataTypes(QWizardPage):
         self.grid_layout.addWidget(b, 1, 3, Qt.AlignmentFlag.AlignCenter)
 
         self.grid_layout.addWidget(QLabel("SRC IP"), 0, 4, Qt.AlignmentFlag.AlignCenter)
-        # b = QPushButton("Reset")
-        # b.clicked.connect(lambda: self.deselect_group(self.groups["src_ip"]))
-        # b.clicked.connect(lambda: self.clear_file_col_names(self.groups["src_ip"]))
-        # self.grid_layout.addWidget(b, 1, 4, Qt.AlignmentFlag.AlignCenter)
 
         self.grid_layout.addWidget(QLabel("SRC Port"), 0, 5, Qt.AlignmentFlag.AlignCenter)
         b = QPushButton("None")
@@ -263,10 +254,6 @@ class PageSetDataTypes(QWizardPage):
         self.grid_layout.addWidget(b, 1, 5, Qt.AlignmentFlag.AlignCenter)
 
         self.grid_layout.addWidget(QLabel("DST IP"), 0, 6, Qt.AlignmentFlag.AlignCenter)
-        # b = QPushButton("Reset")
-        # b.clicked.connect(lambda: self.deselect_group(self.groups["dst_ip"]))
-        # b.clicked.connect(lambda: self.clear_file_col_names(self.groups["dst_ip"]))
-        # self.grid_layout.addWidget(b, 1, 6, Qt.AlignmentFlag.AlignCenter)
 
         self.grid_layout.addWidget(QLabel("DST Port"), 0, 7, Qt.AlignmentFlag.AlignCenter)
         b = QPushButton("None")

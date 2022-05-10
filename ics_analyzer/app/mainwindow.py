@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QWidget,
+    QMessageBox,
 )
 from PyQt6.QtGui import QAction, QFont
 
@@ -70,6 +71,14 @@ class MainWindow(QMainWindow):
         Columns that where part of the original csv file.
     attribute_name : str
         Attribute of interest used in analysis.
+    attribute_values : list[str | int | float]
+        Selected values of attribute.
+    direction : DirectionEnum
+        Selected direction of communication.
+    start_dt : datetime
+        Start time of communication.
+    end_dt:  datetime
+        Start time of communication.
     file_path : str
         File path of the csv file.
     master_station_id : int
@@ -110,8 +119,8 @@ class MainWindow(QMainWindow):
         self.og_cols: list[str]
         self.attribute_name: str = None
         self.attribute_values: list[str | int | float] = []
-        self.direction: DirectionEnum = DirectionEnum.BOTH  # TODO doc
-        self.start_dt: datetime  # TODO doc
+        self.direction: DirectionEnum = DirectionEnum.BOTH
+        self.start_dt: datetime
         self.end_dt: datetime
         self.file_path: str
         self.master_station_id: int
@@ -122,10 +131,7 @@ class MainWindow(QMainWindow):
 
         main_layout = QVBoxLayout()
 
-        # TOOLBAR
-
-        # toolbar = self.create_toolbar()
-        # self.addToolBar(toolbar)
+        # MENU BAR
 
         menuBar = self.create_menubar()
         self.setMenuBar(menuBar)
@@ -145,22 +151,6 @@ class MainWindow(QMainWindow):
         self.event_handler.subscribe(EventType.ATTRIBUTE_CHANGED, settings_panel.update_panel)
         self.event_handler.subscribe(EventType.ATTRIBUTE_VALUES_CHANGED, settings_panel.update_panel)
         main_layout.addWidget(settings_panel)
-
-        # self.spinner = QtWaitingSpinner(self)
-
-        # self.spinner.setRoundness(70.0)
-        # self.spinner.setMinimumTrailOpacity(15.0)
-        # self.spinner.setTrailFadePercentage(70.0)
-        # self.spinner.setNumberOfLines(12)
-        # self.spinner.setLineLength(10)
-        # self.spinner.setLineWidth(5)
-        # self.spinner.setInnerRadius(10)
-        # self.spinner.setRevolutionsPerSecond(1)
-        # self.spinner.setColor(QColor(81, 4, 71))
-
-        # settings_layout.addWidget(settings_panel)
-        # settings_layout.addWidget(self.spinner)
-        # main_layout.addLayout(settings_layout)
 
         # TABS
 
@@ -257,6 +247,7 @@ class MainWindow(QMainWindow):
         - Selected master and slaves
         - Direction
         - Interval
+        - Attribute
         """
         if self.df_working is not None:
             filtered_pair_ids = dsa.get_connected_pairs(self.master_station_id, self.slave_station_ids, self.pair_ids)
@@ -313,7 +304,7 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(pd.DataFrame)
     def load_csv_from_worker(self, df: pd.DataFrame) -> None:
-        """TODO move to different region"""
+        """Action after csv is loaded"""
         self.df_working = df
         self.preprocess_df()
         self.setWindowTitle(f"ICS Analyzer - {os.path.basename(self.file_path)}")
@@ -325,28 +316,12 @@ class MainWindow(QMainWindow):
         If a file is loaded, preprocess the dataframe, update self attributes and notify observers.
         """
 
-        # TODO delete test
-        if False:
-            self.file_path = "placeholder.py"
-            import pickle
-
-            with open("../save/fcn.pkl", "rb") as f:
-                self.fcn = pickle.load(f)
-            self.df_working = pd.read_pickle("../save/df.pkl")
-
-            self.preprocess_df()
-
-            self.event_handler.notify(EventType.DATAFRAME_CHANGED, self.event_data)
-
-            return
-
         file_path, _ = QFileDialog.getOpenFileName(parent=self, caption="Open file", filter="CSV files (*.csv *.txt)")
 
         if file_path:
             self.file_path = file_path
             dialog = OpenCsvWizard(file_path)
             if dialog.exec():
-                # TODO exception
                 dialect, data_types, self.fcn = dialog.get_csv_settings()
 
                 self.thread = QThread()
@@ -369,45 +344,19 @@ class MainWindow(QMainWindow):
                 self.spinner.start()
                 self.thread.start()
 
-                # spinner = QtWaitingSpinner(self)
-
-                # spinner.setRoundness(70.0)
-                # spinner.setMinimumTrailOpacity(15.0)
-                # spinner.setTrailFadePercentage(70.0)
-                # spinner.setNumberOfLines(12)
-                # spinner.setLineLength(10)
-                # spinner.setLineWidth(5)
-                # spinner.setInnerRadius(10)
-                # spinner.setRevolutionsPerSecond(1)
-                # spinner.setColor(QColor(81, 4, 71))
-
-                # spinner.start()
-                # spinner.stop()
-
-                # TODO COPY THIS BLOCK
-                # try:
-                #     self.df_working = dsl.load_data(file_path, data_types, dialect)
-                # except ValueError as e:
-                #     WarningMessageBox(str(e), self).exec()
-                #     return
-                # self.preprocess_df()
-                # self.event_handler.notify(EventType.DATAFRAME_CHANGED, self.event_data)
-
-                # self.df_working.to_pickle("../save/df3.pkl")  # TODO delete
-
-                # # TODO delete
-                # import pickle
-
-                # with open("../save/fcn.pkl", "wb") as f:
-                #     pickle.dump(self.fcn, f)
-
     def show_help(self) -> None:
-        # TODO
-        pass
+        "Show help dialog"
+        dlg = QMessageBox()
+        dlg.setWindowTitle("Help")
+        dlg.setText("To be done")
+        dlg.exec()
 
     def show_about(self) -> None:
-        # TODO
-        pass
+        "Show about dialog"
+        dlg = QMessageBox()
+        dlg.setWindowTitle("About")
+        dlg.setText("Andrea Chimenti\nBrno University of Technology\n2022")
+        dlg.exec()
 
     def change_master_station(self) -> None:
         """Open dialog for master station selection.
@@ -660,7 +609,7 @@ class MainWindow(QMainWindow):
         name = "Exit"
         actions[name] = QAction(text=name, parent=self)
         # https://www.iconfinder.com/icons/352328/app_exit_to_icon
-        actions[name].triggered.connect(QApplication.instance().quit)  # TODO je to spravne?
+        actions[name].triggered.connect(QApplication.instance().quit)
 
         return actions
 

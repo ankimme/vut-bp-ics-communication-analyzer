@@ -1,3 +1,15 @@
+"""App dialogs.
+
+Author
+------
+Andrea Chimenti
+
+Date
+----
+March 2022
+"""
+
+
 import pandas as pd
 from datetime import datetime
 from bidict import bidict
@@ -27,6 +39,15 @@ from app.widgets import InfoLabel
 
 class WarningMessageBox(QMessageBox):
     def __init__(self, message: str, parent: QWidget = None) -> None:
+        """A simple warning box with OK button.
+
+        Parameters
+        ----------
+        message : str
+            Warning message.
+        parent : QWidget, optional
+            Parent widget.
+        """
         super().__init__(parent)
 
         self.setWindowTitle("Warning")
@@ -91,7 +112,7 @@ class SelectMasterStationsDialog(QDialog):
 
 
 class SelectSlavesDialog(QDialog):
-    """Select slaves dialog.
+    """A simple dialog used for selecting slave stations.
 
     Attributes
     ----------
@@ -200,6 +221,8 @@ class SelectSlavesDialog(QDialog):
 
 
 class ChangeDirectionDialog(QDialog):
+    """A simple dialog used for selecting the direction of communication."""
+
     def __init__(self, og_direction: DirectionEnum, parent: QWidget = None) -> None:
         super().__init__(parent)
 
@@ -244,6 +267,8 @@ class ChangeDirectionDialog(QDialog):
 
 
 class ChangeIntervalDialog(QDialog):
+    """A simple dialog used for changing the interval of itnerest."""
+
     def __init__(
         self, start: datetime, end: datetime, low_limit: datetime, upper_limit: datetime, parent: QWidget = None
     ) -> None:
@@ -262,8 +287,6 @@ class ChangeIntervalDialog(QDialog):
         self.start_time_edit = QDateTimeEdit()
         self.start_time_edit.setDisplayFormat(display_format)
         self.start_time_edit.setDateTime(start)
-        # self.start_time_edit.setMinimumDateTime(self.low_limit)
-        # self.start_time_edit.setMaximumDateTime(self.upper_limit)
         self.start_time_edit.dateTimeChanged.connect(self.update_ui)
 
         start_reset_button = QPushButton("Reset start datetime")
@@ -277,8 +300,6 @@ class ChangeIntervalDialog(QDialog):
         self.end_time_edit = QDateTimeEdit()
         self.end_time_edit.setDisplayFormat(display_format)
         self.end_time_edit.setDateTime(end)
-        # self.end_time_edit.setMinimumDateTime(self.low_limit)
-        # self.end_time_edit.setMaximumDateTime(self.upper_limit)
         self.end_time_edit.dateTimeChanged.connect(self.update_ui)
 
         end_reset_button = QPushButton("Reset end datetime")
@@ -432,6 +453,8 @@ class ChangeResampleRateDialog(QDialog):
 
 
 class SelectAttributeDialog(QDialog):
+    """Dialog used for changing the attribute."""
+
     def __init__(self, og_attribute: str, attributes: list[str], parent: QWidget = None) -> None:
         super().__init__(parent)
 
@@ -496,6 +519,8 @@ class SelectAttributeDialog(QDialog):
 
 
 class SelectAttributeValuesDialog(QDialog):
+    """Dialog used for changing the attribute values."""
+
     def __init__(
         self,
         og_attribute_values: list[str | int | float],
@@ -506,17 +531,22 @@ class SelectAttributeValuesDialog(QDialog):
 
         self.setWindowTitle("Select attribute values")
 
+        # QScrollArea -> QWidget -> layout -> content widgets
+        dialog_layout = QVBoxLayout()
+        scroll_area = QScrollArea()
+        parent_widget = QWidget(self)
+
         self.layout = QVBoxLayout()
 
         # select all button
         select_all_button = QPushButton("Select all")
         select_all_button.clicked.connect(self.select_all)
-        self.layout.addWidget(select_all_button)
+        dialog_layout.addWidget(select_all_button)
 
         # deselect all button
         deselect_all_button = QPushButton("Deselect all")
         deselect_all_button.clicked.connect(self.deselect_all)
-        self.layout.addWidget(deselect_all_button)
+        dialog_layout.addWidget(deselect_all_button)
 
         self.boxes: dict[str, QCheckBox] = {}
 
@@ -533,8 +563,12 @@ class SelectAttributeValuesDialog(QDialog):
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
 
-        self.layout.addWidget(self.buttons)
-        self.setLayout(self.layout)
+        parent_widget.setLayout(self.layout)
+
+        scroll_area.setWidget(parent_widget)
+        dialog_layout.addWidget(scroll_area)
+        dialog_layout.addWidget(self.buttons)
+        self.setLayout(dialog_layout)
 
     @pyqtSlot()
     def select_all(self) -> None:

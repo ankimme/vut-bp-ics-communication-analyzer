@@ -1,0 +1,1490 @@
+% Autor: Andrea Chimenti
+\chapter{Úvod}
+
+\uv{Data hýbou světem} -- tuhle větu už jistě ve svém životě slyšel každý. Pravdou je, že tzv. \uv{data science} (neboli česky \uv{datová věda}) je v posledních letech rychle se rozvíjejícím oborem. Díky moderním technologiím a možnostem které nabízí, lze analyzovat čím dál větší množství dat. Díky tomu lze pracovat s vhledy a~informacemi o~datech, které by se v~minulosti jen těžko získávaly.
+
+Jednou z oblastí, ve kterých vzniká potřeba analýzy velkého množství dat, jsou průmyslové řídící systémy, jejichž popis je uveden v kapitole \ref{chapter_ics}. Tyto systémy se většinou skládají z množství stanic, které mezí sebou různě komunikují. Je tedy v zájmu operátorů systémů mít přehled o tom, co se v komunikaci děje. Prohlížení surových záznamů ve formě \texttt{csv} nebo \texttt{pcap} souborů však nepřináší požadované výsledky. Z tohoto důvodu představuje práce řešení, díky kterému lze jednoduše získat množství statistik a~vizualizovat zkoumaná data.
+
+
+
+Jedním se základních kamenů datové analýzy je popisná statistika. Kapitola \ref{chapter_stats} se proto zabývá jejími základními koncepty. V kapitole jsou uvedeny základní charakteristiky polohy, charakteristiky variability a některé metody pro vizualizaci dat.
+
+Pro účely této práce byly využity datové sady, obsahující záznamy průmyslové komunikace, které vznikly na \emph{Fakultě elektrotechniky a komunikačních technologií} a \emph{Fakultě informačních technologií} spadající pod \emph{Vysoké učení technické v Brně}. Popis datových sad a~navržených metod k jejich analýze je uveden v kapitole \ref{datasets_analysis}.
+
+V kapitole \ref{chapter_design} je uveden návrh aplikace, která umožňuje uživateli (operátorovi) provést analýzu průmyslové komunikace bez nutnosti hlubokých znalostí programování apod. Aplikace poskytuje uživateli popis komunikačního profilu zkoumané datové sady a umožňuje mu nalézt v komunikaci stabilní hodnoty. Získané informace mohou být využity k hledání anomálií nebo útoků. Popis implementace aplikace, její architektura a uživatelské pohledy, které nabízí jsou uvedeny v kapitole \ref{chapter_implementation}.
+
+Práce je zakončena experimentální částí v kapitole \ref{chapter_experiments}, kde je demonstrováno vyhledání stabilních hodnot v komunikaci a jejich následné použití pro detekci anomálií.
+
+
+
+
+\chapter{Industrial Control Systems}
+\label{chapter_ics}
+
+Termín \textit{Industrial control systems} (dále jen \uv{ICS}) souhrnně označuje různé typy průmyslových řídících systémů a prostředky pro jejich realizaci. ICS se skládají z řídicích prvků (např. elektrických, mechanických, hydraulických, pneumatických atd.), které jsou navzájem propojeny a řízeny tak, aby umožnily dosažení průmyslových cílů. Řízení může být plně automatizované, nebo může být ovládáno operátorem. ICS se obvykle používají v energetice, vodárenství, chemickém průmyslu, dopravě, a dalších průmyslových odvětvích. Může se jednat např. o systémy pro správu průtoku kapalin potrubím v ropné rafinerii, pro monitorování stavu elektrické rozvodové sítě apod. Jednotlivé druhy systémů se~liší architekturou a možnostmi škálovatelnosti. Finální podoba systémů závisí na cílové průmyslové oblasti a~na způsobu využití daného systému. Mezi nejpoužívanější systémy patří SCADA (Supervisory Control And Data Acquisition), které budou podrobněji představeny v podkapitole \ref{scada_systems}, a DCS (Distributed Control Systems).
+
+Aby bylo možné systémy běžně využívat v praxi, musí být jasně definován jejich komunikační profil. Za tímto účelem vzniklo několik standardů jako např. IEC 60870-5 nebo DNP3. V podkapitole \ref{iec_104} bude představen protokol IEC 60870-5-104, definující komunikační profil SCADA systémů, který k přenosu dat využívá transportní vrstvu TCP/IP.
+
+Pro průmyslové řídící systémy je typické, že vznikly jako softwarová nadstavba nad fyzickými systémy, umožňující monitorování a ovládání fyzických prvků.  Díky zvyšující se míře zakomponování informačních technologií do průmyslových odvětví, došlo ke vzniku mnoha \uv{chytrých} systémů (např. chytré budovy, chytré továrny, \dots) využívajících ICS. Kromě benefitů, ve formě vyšší efektivity, konektivity atd., došlo zároveň k nárůstu počtu rizik, které s sebou použití řídících systémů obnáší. Možnosti zneužití některých druhů zranitelnosti jsou rozebrány v podkapitole \ref{scada_attacks} \cite{ics_security}.
+
+
+\section{SCADA systémy}
+\label{scada_systems}
+
+Supervisory Control And Data Acquisition (dále jen \uv{SCADA}) systémy jsou určeny k~centralizovanému sběru a monitorování dat ze zařízení, která se nacházejí v různých geografických oblastech. Monitorování a ovladání zařízení se provádí pomocí centrální řídící stanice. Agregovaná data se v reálném čase zobrazují textově nebo graficky operátorovi, který může celý systém monitorovat a vzdáleně reagovat na případné události. Dle nastavení systému se některé změny mohou provádět i automaticky. Své uplatnění nacházejí SCADA systémy např. v systémech pro distribuci plynu, sběr odpadních vod, koordinaci městské hromadné dopravy atd. 
+
+Typická architektura SCADA systému zahrnuje jednu řídící stanici a několik koncových zařízení. Řídící stanice poskytuje výpočetní zdroje pro příjem a zpracování dat a poskytuje operátorovi potřebné informace a ovládací prvky. Koncová zařízení sbírají svá lokální data a komunikují s řídící stanicí. Řídící stanice si může data od koncových zařízení vyžádat a zároveň může odesílat kontrolní příkazy. Komunikace řídící stanice a koncových zařízení může být založena na různých komunikačních kanálech, u nově vzniklých systémů se většinou využívá TCP/IP protokolu
+\cite{ics_security}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth]{obrazky-figures/scada_arch.pdf}
+	\caption{Obvykle používáná architektura systémů SCADA. Řídící stanice je umístěna v kontrolním centru a podřízené stanice jsou rozprostřeny do několika fyzicky i logicky oddělených oblastí.}
+	\label{fig:scada_arch}
+\end{figure}
+
+\subsection{Funkce SCADA systémů}
+SCADA systémy nabízejí velké množství monitorovacích a kontrolních funkcí. V následujícím výčtu jsou uvedeny ty nejdůležitější z nich. Převzato z \cite{scada_arch}.
+\begin{itemize}
+    \item Zobrazení stavu technologických procesů v reálném čase.
+    \item Vzdálené řízení technologických procesů pomocí řídící stanice.
+    \item Možnost přímých zásahů do technologických procesů operátory.
+    \item Automatické řízení technologických procesů za účelem zvýšení efektivity.
+    \item Pravidelné generování provozních zpráv.
+    \item Grafické zobrazení údajů o technologickém procesu za účelem vypracování efektivních provozních strategií.
+\end{itemize}
+
+
+
+\subsection{Komunikační standardy SCADA systémů}
+
+Koncem 90. let došlo ke vzniku dvou otevřených komunikačních standardů, známým jako DNP3 a IEC 60870-5, které definují podobu komunikace mezi stanicemi v rámci SCADA systémů. Ta zahrnuje získávání informací a odesílání kontrolních příkazů mezi fyzicky vzdálenými zařízeními. Standardy se vyznačují možností spolehlivého přenosu relativně malých paketů v pevně daném pořadí. V tomto ohledu se liší od více obecně založených protokolů jako je FTP nebo TCP/IP, které nejsou příliš vhodné pro SCADA systémy. Vzhledem ke společnému základu protokolů je funkcionalita na nižších vrstvách podobná. Ve vyšších vrstvách však pracují odlišně \cite{scada_protocols}.
+
+IEC 60870-5 byl vytvořen Mezinárodní elektrotechnickou komisí (dále jen \uv{IEC}, z~anglické zkratky pro \emph{International Electrotechnical Commission}). Standard je primárně využíván v systémech pro správu elektrické přenosové soustavy a to hlavně v evropských zemích \cite{scada_protocols}. V kapitole \ref{iec_104} bude podrobněji rozebrán protokol IEC 60870-5-104, patřící do této rodiny.
+
+DNP3, celým názvem \emph{Distributed Network Protocol 3}, byl navržen společností \emph{Harris} a~určen primárně pro použití v energetickém průmyslu. Na rozdíl od protokolu IEC 60870-5, je však využíván i v jiných odvětvích jako např. plynárenství, zpracování odpadních vod apod. Protokol má velkou podporu v Severní a Jižní Americe, Asii, Jižní Africe a Austrálii \cite{scada_protocols}. Práce se dále tímto standardem zabývat nebude.
+
+\section{Protokol IEC 60870-5-104}
+
+\label{iec_104}
+
+Protokol IEC 60870-5-104 (dále jen \uv{IEC 104}) poskytuje komunikační profil pro zasílání základních telekomunikačních zpráv mezi řídící stanicí a podřízenými stanicemi u SCADA systémů. Vznikl jako nástupce protokolu IEC 60870-5-101 (dále jen \uv{IEC 101}), oproti kterému se liší ve způsobu přenosu informací na nižších vrstvách. Kombinuje aplikační vrstvu protokolu IEC 101 s transportní vrstvou TCP/IP architektury \cite{scada_protocols}. Následující obsah kapitoly se zabývá vlastnostmi aplikační vrstvy a informace v ní obsažené jsou platné pro oba protokoly \cite{iec_104}.
+
+\subsection{Komunikační profil}
+
+Základním předpokladem je rozdělení stanic do hierarchie, kde každá stanice má jasně danou pozici a práva.
+
+\subsubsection*{Typy stanic}
+
+Typ stanice určuje pozici stanice v hierarchii systému.
+
+\begin{itemize}
+    \item \textbf{Řídící stanice:} stanice, ze které jsou posílány příkazy podřízeným stanicím. Typicky se jedná o osobní počítač se SCADA systémem, se kterým přímo interaguje operátor systému. Řídící stanice obvykle komunikuje na portu 2404. Někdy je také označována jako \emph{master} nebo \emph{centrální stanice}. 
+    \item \textbf{Podřízená stanice:} stanice, která je ovládána řídící stanicí. Může se jednat o senzor, hydraulický lis, turbínu apod. Někdy je také označována jako \emph{slave} nebo \emph{koncová stanice}.
+\end{itemize}
+
+\pagebreak
+
+\subsubsection*{Režimy přenosu}
+
+Režim přenosu udává, které stanice mají právo iniciovat komunikaci.
+
+\begin{itemize}
+    \item \textbf{Nevyvážený přenos:} řídící stanice reguluje datový provoz podáváním dotazů podřízeným stanicím. Iniciuje všechny přenosy zpráv, zatímco podřízené stanice na tyto zprávy pouze odpovídají.
+    \item \textbf{Vyvážený přenos:} jakákoliv stanice má právo iniciovat přenos zprávy. Stanice mohou současně vystupovat jako řídicí a podřízené.
+\end{itemize}
+
+\subsubsection*{Směry komunikace}
+
+Směr komunikace udává, odkud kam se přenáší data.
+
+\begin{itemize}
+    \item \textbf{Monitorovací směr:} od podřízené stanice k řídící.
+    \item \textbf{Kontrolní směr:} od řídící stanice k podřízené.
+    \item \textbf{Obrácený směr:} stav, kdy podřízená stanice posílá dotazy a řídící stanice odpovídá daty.
+\end{itemize}
+
+\subsection{Struktura aplikačních dat}
+
+Aplikační data protokolu IEC 104 tvoří APDU (Application Protocol Data Unit) jednotka, dělící se dále na APCI (Application Protocol Control Information) a ASDU (Application Service Data Unit), viz ilustrace \ref{apdu_img}.
+
+APCI jednotka začíná 8 bity s fixní hodnotou \texttt{0x68}, za kterými následuje 8 bitů, které udávají délku APDU. Následují čtyři 8 bitové kontrolní pole (\emph{control fields}). 
+
+ASDU jednotka obsahuje 48 bitů pro identifikaci dat a až 127 datových objektů, sloužící k uchování užitečných dat. Některé položky, které slouží k identifikaci jsou dále popsány v~této kapitole  \cite{iec_104}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.32\textwidth]{obrazky-figures/iec104_diagram.pdf}
+	\caption{APDU jednotka \cite{iec_104}.}
+	\label{apdu_img}
+\end{figure}
+
+
+\subsubsection*{Formát APCI jednotky}
+\label{apci_unit}
+
+Protokol IEC 104 definuje celkově 3 formáty, které udávají podobu kontrolních polí. I, S a U formát.
+S a I formáty ukládají sekvenční čísla odeslaných zpráv. Pokud je tento čítač neplatný, pak je spojení ukončeno. Možnost zneužití tohoto chování bude popsána v~podkapitole \ref{apci_manipulation}. ASDU je přítomna pouze v případě, že je použit I-formát.
+
+\begin{itemize}
+    \item \textbf{I-formát:} z angl. výrazu \emph{Information transfer format}. Slouží k číslovanému přenosu informací mezi řídicí a podřízenou stanicí.
+    \item \textbf{S-formát:} z angl. výrazu \emph{numbered supervisory functions}. Používá se k provádění očíslovaných kontrolních funkcí.
+    \item \textbf{U-formát:} z angl. výrazu \emph{unnumbered control functions}. Slouží k provádění nečíslovaných řídicích funkcí.
+\end{itemize}
+
+
+\subsubsection*{Položky ASDU}
+\label{polozky_asdu}
+
+\emph{Poznámka: V následujícím výčtu jsou uvedeny pouze položky relevantní pro tuhle práci.}
+
+\begin{itemize}
+    \item \textbf{Typ:} Udává typ přenášených dat.
+    \item \textbf{COT:} Důvod přenosu, z angl. zkratky pro \emph{cause of transmission}. Používá se při interpretaci dat cílovou stanicí. Každý typ ASDU má definovanou podmnožinu platných COT kódů, které jsou pro něj smysluplné.
+    \item \textbf{COA:} Společná ASDU adresa, z angl. zkratky pro \emph{common ASDU address}. Je asociovaná se všemi datovými objekty v ASDU bloku. Většinou je používána pro identifikaci celé stanice. Alternativní možností je identifikace sektoru stanice, při které lze stanici rozdělit na několik logických částí.
+    \item \textbf{IOA:} Adresa informačního objektu, z angl. zkratky pro \emph{Information object address}. Slouží k identifikaci konkrétních dat konkrétní stanice.
+\end{itemize}
+
+
+\section{Útoky na SCADA systémy}
+\label{scada_attacks}
+
+Přestože je protokol IEC 104 široce využíván, zabezpečení nebylo při vzniku prioritou. Protokol postrádá důležité bezpečnostní prvky jako je šifrování, ochrana integrity nebo autentizace. V této podkapitole budou představeny některé kybernetické útoky, vůči kterým nemá protokol vestavěnou ochranu. Následující výčet útoků čerpá z \cite{scada_attack}.
+
+
+
+\subsection*{Neautentizovaný přístup}
+\label{unauthorized_access}
+
+
+Protokol nedisponuje mechanismem ověření identity. Útočník se může připojit ke koncové stanici a bez nutnosti autentizace začít odesílat kontrolní příkazy. Útočník může například odeslat dotazovací příkaz a zjistit stanicí používané hodnoty IOA (viz \ref{polozky_asdu}) . Typický průběh útoku vypadá následovně:
+
+
+\begin{enumerate}
+    \item Zjištění IP adresy a portu koncové stanice.
+    \item Vydávání se za řídící stanici a odeslání požadavku na připojení koncové stanici.
+    \item Kvůli chybějící autentizaci, dojde ze strany koncové stanice k přijetí požadavku.
+    \item Odeslání libovolných kontrolních příkazů koncové stanici.
+\end{enumerate}
+
+
+\subsection*{Manipulace sekvenčních čísel APCI}
+\label{apci_manipulation}
+
+Pokud stanice obdrží paket s neočekávaným sekvenčním číslem v jednotce APCI, dojde k ukončení spojení. Útočník může zneužít této vlastnosti a následujícími kroky zapříčinit výpadek systému (tzv. \emph{Denial of Service}): 
+
+\begin{enumerate}
+    \item Vložení se do komunikace mezi stanicemi. Z útočníka se stane tzv. \emph{Man in the middle}.
+    \item Odchycení příchozích paketů.
+    \item Modifikace paketů. Konkrétně změna pořadového čísla APCI.
+    \item Výpočet nového \emph{TCP checksum}.
+    \item Navrácení paketů do původní komunikace.
+\end{enumerate}
+
+
+\subsection*{Manipulace TCP toku}
+
+Komunikace mezi řídící a koncovou stanicí probíhá v jednom TCP proudu, který je aktivně udržován otevřený.
+Útočník, který vystupuje jako \emph{Man in the middle}, může využít zranitelnosti TCP a způsobit ukončení komunikace, vedoucí k nesprávné funkci nebo dokonce výpadku systému. Tento typ útoku se liší od \ref{apci_manipulation} pouze ve třetím bodě. V tomto případě mohou být k modifikaci paketů použity následující metody:
+
+\begin{itemize}
+    \item Sekvenční číslo TCP toku se změní na neočekávanou hodnotu.
+    \item Synchronizační příznak se nastaví na hodnotu \texttt{FIN}\footnote{Příznak \texttt{FIN} se používá u TCP komunikace k označení jejího konce.}.
+\end{itemize}
+
+
+\subsection*{Záplava pakety s příznakem SYN}
+
+Jedná se o běžný kybernetický útok, v anglickém jazyce je znám pod pojmem \emph{SYN Flood}. Během útoku se útočník snaží zahltit cílový systém velkým množstvím paketů se synchronizačním příznakem nastaveným na hodnotu \texttt{SYN}\footnote{Příznak \texttt{SYN} se používá u TCP komunikace k vyžádání nového spojení.}. Cílové stanice jsou zahlceny množstvím nových falešných žádostí o spojení a nestíhají odbavovat legitimní požadavky. Dochází k~znatelnému zpomalení systému \cite{radoglou}.
+
+
+
+\subsection*{Vkládání podvržených paketů}
+
+Jedná se o pokročilou formu útoku, která umožňuje útočníkovi v pozici \emph{Man in the middle} vkládat do komunikace pakety s libovolnými hodnotami ASDU. Útočník tak může převzít ovládání nad celou energetickou sítí. K úspěšnému provedení útoku musí útočník správně upravit sekvenční čísla (APCI i TCP) všech paketů. V~případě, že by tak neučinil, došlo by k ukončení spojení. Detekce takového útoku může být velmi obtížná, jelikož nedochází k přerušení spojení a navíc může útočník podvrhnout data, která se budou zobrazovat operátorovi. Typický průběh útoku:
+
+\begin{enumerate}
+    \item Vložení se do komunikace mezi stanicemi. Z útočníka se stane tzv. Man in the middle.
+    \item Odchycení příchozích paketů a učení se APCI a TCP sekvencí.
+    \item Vložení podvrženého paketu s libovolnou hodnotou ASDU a vypozorovanými sekvenčními čísly do komunikace.
+    \item Sledování a udržování vnitřního stavu sekvenčních čísel.
+    \item Zachycení všech zbylých paketů a opravení sekvenčních čísel tak, aby spojení nebylo přerušeno.
+\end{enumerate}
+
+\chapter{Statistický popis dat}
+\label{chapter_stats}
+
+Statistickým popisem dat se zabývá tzv. \emph{deskriptivní statistika}. Jedná se o disciplínu, která kvantitativně popisuje hlavní vlastnosti souboru dat a snaží se numerickým nebo grafickým popisem vystihnout podstatné informace o daných datech. Umožňuje uživateli nalézt rozložení hodnot atributů a tím pádem lépe pochopit zkoumaná data. Předmětem zkoumání deskriptivní statistiky je statistický soubor dat, který může reprezentovat buď celou populaci, nebo pouze její část (tzv. \emph{výběrový soubor}).
+
+Numerický popis dat se člení na míry polohy (viz \ref{avg_stats}) a míry variability (viz \ref{var_stats}). Mezi míry polohy patří např. modus, medián nebo střední hodnota. Mezi míry variability patří např. rozptyl, směrodatná odchylka, minimum, maximum apod. Grafický popis dat nabízí velké množství metod zobrazení, z nichž nejčastěji používané jsou např. spojnicové grafy, histogramy, koláčové grafy apod. Vybrané metody budou popsány v podkapitole \ref{charts}.  
+
+
+\section{Míry polohy}
+\label{avg_stats}
+
+Míry polohy vyjadřují \uv{kde} se data nacházejí. Charakterizují \uv{střed} datového souboru, kolem kterého se hodnoty pohybují. Mají důležitou výpovědní hodnotu o tom, jak data vypadají a jak se chovají. Mohou nabývat i takových hodnot, které se v datovém souboru přímo nenacházejí, například průměrná hodnota v souboru přirozených čísel může být racionálním číslem, které není přirozené. Pro charakteristiky polohy výběrového souboru platí, že pouze odhadují skutečné hodnoty celé populace \cite{average}.
+
+
+\subsection*{Střední hodnota}
+
+Střední hodnota datového souboru je nejzákladnější charakteristikou polohy. Označuje se řeckým písmenem $\mu$ a je totožná s aritmetickým průměrem všech prvků souboru. Význam střední hodnoty je největší u datových souborů se symetrickým rozdělením dat a s nízkým výskytem odlehlých hodnot. V takovém případě by měla rozdělovat soubor na dva přibližně stejně velké celky. Tahle vlastnost je negativně ovlivňována výskytem odlehlých hodnot, které mají schopnost výrazně vychýlit střední hodnotu. Střední hodnota se počítá jako součet všech hodnot vydělených jejich počtem \cite{skiena}:
+
+
+\begin{equation}
+\mu = \frac{1}{N} \sum_{i=1}^{N} x_{i}
+\end{equation}
+
+\noindent kde:
+
+
+
+\begin{description}
+    \item[N] je celkový počet prvků v datovém souboru.
+    \item[x_i] je \emph{i}-tý prvek datového souboru.
+\end{description}
+
+
+\noindent Důležitou vlastností průměru (a tím pádem i střední hodnoty) je \uv{nevychýlenost}, která zajišťuje, že průměr všech možných výběrových průměrů, počítaný přes všechny výběrové soubory dané velikosti, je roven průměru celé populace. Díky této vlastnosti je zajištěno, že průměr výběrového souboru dobře aproximuje průměr celé populace a tudíž je jeho výpovědní hodnota relevantní i přes neúplnost dat \cite{zahora}.
+
+\subsection*{Medián}
+
+Medián je přesným středem datové sady. Rozděluje sadu na dvě stejně velké části, kde počet prvků s větší hodnotou než medián je stejný jako počet prvků s hodnotou menší. V případě lichého počtu prvků v datové sadě je mediánem \uv{prostřední} prvek seřazené datové sady \ref{med_odd}. Pro sady se sudým počtem prvků je mediánem průměr dvou \uv{prostředních} prvků seřazené datové sady \ref{med_even}.
+Čím více je distribuce dat symetrická, tím leží medián blíže střední hodnotě a přidaná výpovědní hodnota není příliš vysoká. U datových sad s asymetrickým rozložením může však vzdálenost a vzájemná poloha mediánu a střední hodnoty napovědět hodně o tom, jak vypadá distribuce a jak moc je asymetrická. Výrazně se lišící hodnoty navíc naznačují, že se v datové sadě nachází mnoho odlehlých hodnot, které ovlivňují střední hodnotu \cite{skiena}.
+
+
+\begin{align}
+    & & Med & =  x_{\frac{N+1}{2}} & \text{pro lichá } N & &  \label{med_odd}\\
+    & & Med & =  \frac{x_{\frac{N}{2}}+x_{\frac{N}{2}+1}}{2} & \text{pro sudá } N & & \label{med_even}
+\end{align}
+
+\noindent kde:
+
+
+
+\begin{description}
+    \item[N] je celkový počet prvků v datovém souboru.
+    \item[x_n] je \emph{n}-tý prvek seřazeného datového souboru.
+\end{description}
+
+
+\subsection*{Modus}
+
+Modus je nejčastější hodnota, která se vyskytuje v datové sadě. Při jeho výpočtu se většinou datová sada rozdělí do intervalů, ve kterých se nalezne ten nejvíce zastoupený a jako modus se použije jeho střed krajních hodnot. Často je využíván k detekci chyb nebo anomálií (v datové sadě může být například nejčastější hodnotou výchozí nebo chybová hodnota). Datové sady, pro které modus nabývá více hodnot, označujeme jako \emph{multimodální}. Multimodalita může naznačovat, že v datový soubor vznikl smícháním dvou nebo více unimodálních populací \cite{zahora}.
+
+\subsection*{Q-Kvantily}
+
+$q$-kvantily rozdělují seřazený soubor dat na $q$ přibližně stejně velkých částí. $k$-tý $q$-kvantil je hodnota $Q_k$ náhodné veličiny $X$, pro kterou za předpokladu že:
+
+\begin{equation*}
+    0 < k < q \wedge k, q \in \mathbb{N}
+\end{equation*}
+
+platí:
+
+\begin{equation}
+    P(X \leq  Q_k)\geq \frac{k}{q} \wedge P(X \geq Q_k) \geq 1 - \frac{k}{q}
+\end{equation}
+
+\medskip
+
+Pro následující hodnoty $q$ se $q$-kvantily označují jako:
+\begin{itemize}
+    \item $q=2$: medián
+    \item $q=3$: tercil
+    \item $q=4$: kvartil
+    \item $q=5$: kvintil
+    \item $q=10$: decil
+    \item $q=100$: percentil
+\end{itemize}
+
+
+\section{Míry variability}
+\label{var_stats}
+
+Míry variability zkoumají, jak jsou prvky v datovém souboru vzájemně blízké či vzdálené. Hodnotí rozptýlenost hodnot statistického souboru kolem nějaké střední hodnoty. Pro charakteristiky variability výběrového souboru opět platí, že pouze odhadují skutečné hodnoty celé populace \cite{variance}.
+
+
+\subsection*{Směrodatná odchylka a rozptyl}
+Nejběžnějším měřítkem variability je rozptyl, který se označuje symbolem $\sigma^2$. Udává, jak moc jsou data soustředěna kolem střední hodnoty. Nízký rozptyl naznačuje, že datové body mají tendenci být těsně seskupeny kolem středu. Vysoký rozptyl naopak znamená, že mají tendenci se od středu vzdalovat. Kromě rozptylu se často používá i směrodatná odchylka, která je druhou odmocninou rozptylu a označuje se symbolem $\sigma$. Pro výpočet rozptylu se používá součet čtverců odchylek jednotlivých prvků od střední hodnoty \cite{frost}:
+
+\begin{equation}
+    \sigma^2 = \frac{1}{N-1} \sum_{i=1}^{N} (x_i - \mu)^2
+\end{equation}
+
+\noindent Pro výpočet směrodatné odchylky poté použijeme druhou odmocninu rozptylu:
+
+\begin{equation}
+    \sigma = \sqrt{\sigma^2}
+\end{equation}
+
+\medskip
+
+\noindent Pro datový soubor s distribucí, která se alespoň přibližně řídí normálním rozdělením, lze pomocí směrodatné odchylky odhadnout podíly hodnot, které spadají do určitých intervalů. Přibližné rozložení dat je ukázáno na obrázku \ref{fig:normal_distribution} a platí pro něj platí následující vlastnosti \cite{frost}:
+
+\begin{itemize}
+    \item V intervalu $\langle{\mu-\sigma,\mu+\sigma}\rangle$ leží přibližně 68~\% hodnot.
+    \item V intervalu $\langle{\mu-2\sigma,\mu+2\sigma}\rangle$ leží přibližně 95~\% hodnot.
+    \item V intervalu $\langle{\mu-3\sigma,\mu+3\sigma}\rangle$ leží přibližně 99,7~\% hodnot.
+\end{itemize}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.9\textwidth]{obrazky-figures/normal_distribution.pdf}
+	\caption{Ukázka rozložení dat u normálního rozdělení \cite{normal_distribution}.}
+	\label{fig:normal_distribution}
+\end{figure}
+
+
+\subsection*{Variační šíře}
+
+Udává rozdíl mezi největší a nejmenší hodnotou v datovém souboru. Je přímo ovlivněna extrémními hodnotami. Nejedná se o interval, ale o číslo udávající šíři intervalu. Výpočet vypadá následovně \cite{variance}:
+
+\begin{equation}
+    R = x_{max} - x_{min}
+\end{equation}
+
+\noindent kde:
+
+\begin{description}
+    \item[x_n] je \emph{n}-tý prvek seřazeného datového souboru.
+\end{description}
+
+\subsection*{Mezikvartilové rozpětí}
+
+
+
+Mezikvartilové rozpětí (angl. \emph{Interquartile range}, zkratka IQR) udává šířku oblasti, ve které leží středních 50 \% hodnot. Nabízí uživateli robustní alternativu ke klasickému rozptylu, která není ovlivňována odlehlými hodnotami.  Počítá se jako rozdíl mezi třetím a prvním kvartilem (tedy mezi 75. a 25. percentilem) \cite{frost}:
+
+\begin{equation}
+    IQR = q_3 - q_1 = p_{75} - p_{25}
+\end{equation}
+
+\noindent kde:
+
+\begin{description}
+    \item[q_n] je \emph{n}-tý kvantil.
+    \item[p_n] je \emph{n}-tý percentil.
+\end{description}
+
+
+
+\noindent Pomocí mezikvartilového rozpětí lze provést detekci odlehlých hodnot. Jelikož jimi není ovlivňováno, snižuje se oproti jiným metodám pravděpodobnost selhání. Metoda navíc nepředpokládá normální rozdělení dat. K detekci se používají tzv. brány, které jsou definovány následujícím způsobem \cite{frost2}:
+
+\begin{gather}
+    lower\_gate = q_1-1.5 \cdot IQR \\
+    upper\_gate = q_3+1.5 \cdot IQR
+\end{gather}
+
+\noindent Pro odlehlé hodnoty $x$ potom platí:
+
+\begin{equation}
+    x < lower\_gate \lor x > upper\_gate
+\end{equation}
+
+
+
+\section{Vizualizační metody popisu dat}
+\label{charts}
+
+
+
+Vizualizační metody jsou důležitou součástí popisné statistiky, která efektivně ukazuje kvantitativní vlastnosti datových souborů jako je rozložení hodnot jejich atributů. Může se jednat o přehledové tabulky, různé druhy grafů, histogramy apod. Mezi nejdůležitější aspekty grafického popisu dat patří následující \cite{skiena}:
+
+\begin{itemize}
+    \item \textbf{Explorační funkce:} usnadňuje uživateli orientaci v datech. Pro uživatele je snazší pochopit chování a distribuci dat.
+    \item \textbf{Detekce chyb:} usnadňuje uživateli nalezení chyb a anomálii v datovém souboru. Může se jednat o špatně naměřené hodnoty, nesprávně načtená data atd.
+    \item \textbf{Komunikační funkce:} umožňuje snadno data prezentovat ostatním uživatelům, kteří nemají hluboký vhled do aplikační domény a neznají kontext vzniku datového souboru.
+\end{itemize}
+
+\subsection*{Histogram}
+
+Histogram je sloupcový graf, který znázorňuje absolutní nebo relativní četnosti hodnot nějakého atributu datové sady \cite{zahora}. Příklad histogramu je uveden na obrázku \ref{hist_plots}. Na vodorovnou osu jsou vyneseny hodnoty atributu a na svislou osu (relativní) četnosti. Někdy je histogram doplněn o křivku znázorňující odhad funkce hustoty pravděpodobnosti (viz obrázek \ref{sub:distplot}). Další častá úprava histogramu spočívá v tom, že namísto vynesení samostatného sloupce pro každou hodnotu atributu, jsou hodnoty atributů rozděleny do intervalů (tříd) a~sloupce jsou vyneseny až pro tyhle intervaly. V takovém případě je důležité zvolit správnou velikost intervalu. Příliš malé intervaly mohou způsobit, že hodnot které do nich spadají, bude příliš málo, nebo že šum bude rušit čitelnost a přehlednost histogramu. Naopak příliš velké intervaly mohou způsobit ztrátu informace o rozdělení, podle kterého se data řídí \cite{skiena}. 
+
+\begin{figure}[h]%
+    \centering
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \resizebox{1\textwidth}{!}
+        {
+            \input{pgf/histplot.pgf}
+        }
+        \captionsetup{width=.9\linewidth}
+        \caption{Histogram ukazující absolutní četnost hodnot.}
+        \label{sub:histplot}
+    \end{subfigure}%
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \resizebox{1\textwidth}{!}
+        {
+            \input{pgf/distplot.pgf}
+        }
+        \captionsetup{width=.9\linewidth}
+        \caption{Histogram ukazující relativní četnost hodnot a odhad funkce hustoty pravděpodobnosti.}
+        \label{sub:distplot}
+    \end{subfigure}
+
+    
+    \caption{Příklad histogramů ukazující absolutní a relativní četnost hodnot datové sady. Datová sada obsahuje 500 vzorků, které byly vygenerovány z normálního rozdělení s parametry $\mu=3$, $\sigma=5$.}%
+    \label{hist_plots}%
+\end{figure}
+
+
+\subsection*{Liniový graf}
+
+
+
+Liniový (nebo také spojnicový) graf je jedním z nejlepších způsobů zobrazení vývoje zkoumaného atributu v čase. Používá se pro časové řady atributů, u kterých hodnota atributu v jednom časovém okamžiku přímo souvisí s hodnotou atributu v následujícím časovém okamžiku \cite{statistika_a_my}. Při tvorbě spojnicového grafu je potřeba věnovat zvýšenou pozornost volbě měřítka svislé osy. Většina nástrojů pro tvorbu spojnicových grafů automaticky volí jako interval svislé osy extrémní hodnoty zobrazovaných dat. V některých případech může docházet k zanedbání kontextu datového souboru a špatné interpretaci dat uživatelem \cite{skiena}. Ukázka použití liniového grafu je popsána v podkapitole \ref{packet_counting}.
+
+\subsection*{Tabulka}
+
+Tabulka je nejpřesnějším způsobem zobrazení dat. Na rozdíl od jiných grafických metod nedochází u tabulek ke ztrátě informací nepřesným vykreslením, zaokrouhlením apod. a~umožňují tak v dalším zpracování využít přesné hodnoty dat. Dále vynikají v zobrazení vysoce multidimenzionálních dat, u kterých klasické vizualizační metody selhávají \cite{skiena}.
+
+\subsection*{Koláčový graf}
+
+Koláčový graf je ideálním nástrojem pro zobrazení poměru kategorických atributů. Je založen na principu rozdělení kruhu do oblastí, které svou velikostí poměrově odpovídají poměru zastoupení jednotlivých kategorií daného atributu v sadě dat. Vždy zobrazuje pouze hodnoty jednoho atributu a je vhodný pro porovnávání. Většinou lze plnohodnotně nahradit sloupcovým grafem \cite{skiena}. Příklad koláčového grafu je uveden na obrázku \ref{pie_plots}.
+ 
+\begin{figure}[h]
+	\centering
+	\resizebox{0.75\textwidth}{!}
+    {
+        \input{pgf/pies.pgf}
+    }
+	\caption{Ukázka dvou koláčových grafů, které znázorňují různé poměry zastoupení kategorického atributu v datech mezi lety 2021 a 2022. Kategorický atribut nabývá hodnot \emph{A}, \emph{B} a \emph{C}. Obrázek znázorňuje, že porovnání poměrů je pro uživatele velmi snadné i přesto, že rozdíl mezi poměry je minimální.}
+	\label{pie_plots}
+\end{figure}
+
+\subsection*{Krabicový graf}
+
+
+Krabicový graf, je graf ve tvaru obdélníku doplněný o tzv. \emph{vousy}, který zobrazuje významné kvantily daného atributu (viz obrázek \ref{box_plot}). Uvnitř obdélníkového tvaru je čarou naznačena pozice mediánu, samotný obdélník značí polohu prvního a třetího kvartilu. Délka obdélníku tedy odpovídá hodnotě mezikvartilového rozpětí a ohraničuje 50~\% hodnot. Vousy dosahující za hranice obdélníkového tvaru pak většinou signalizují polohu minima a maxima \cite{biostatistika}.
+
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.25\textwidth]{obrazky-figures/box_plot.pdf}
+	\caption{Důležité kvantily, které lze pomocí krabicového grafu zkoumat.}
+	\label{box_plot}
+\end{figure}
+
+
+\subsection*{Houslový graf}
+
+Houslový graf zobrazuje podobně jako krabicový graf významné kvantily daného atributu. Navíc ale přidává i zobrazení odhadu hustoty pravděpodobnosti. Je vhodný zejména pro data, která se řídí multimodální distribucí\footnote{Distribuce, která má dva nebo více lokálních maxim.}, protože uživatel získá oproti krabicovému grafu výrazně lepší představu o opravdovém rozložení dat \cite{violin_plot}. Porovnání krabicového a houslového grafu je vyobrazeno na obrázku \ref{box_violin_plots}.
+
+
+\begin{figure}[h]%
+    \centering
+    \begin{subfigure}{\textwidth}
+        \centering
+        \resizebox{1\textwidth}{!}
+        {
+            \input{pgf/violin_density.pgf}
+        }
+        \captionsetup{width=.9\linewidth}
+        \caption{Histogram dat řídící se bimodální distribucí. Distribuce vznikla spojením dvou normálních rozdělení s parametry $\mu=-2$, $\sigma=2$ a $\mu=3$, $\sigma=1$. Křivka znázorňuje odhad hustoty pravděpodobnosti.}
+        \label{sub:violin_density}
+    \end{subfigure}
+    \par\medskip
+    \begin{subfigure}{\textwidth}
+        \centering
+        \resizebox{1\textwidth}{!}
+        {
+            \input{pgf/violin_boxplot.pgf}
+        }
+        \captionsetup{width=.9\linewidth}
+        \caption{Z krabicového grafu nelze poznat, jakým rozdělením se data opravdu řídí. Uživatel se může mylně domnívat, že se data řídí unimodálním normálním rozdělením.}
+        \label{sub:violin_boxplot}
+    \end{subfigure}
+    \par\medskip
+    \begin{subfigure}{\textwidth}
+        \centering
+        \resizebox{1\textwidth}{!}
+        {
+            \input{pgf/violin_violin.pgf}
+        }
+        \captionsetup{width=.9\linewidth}
+        \caption{Houslový graf ukazuje i odhad hustoty pravděpodobnosti zkoumaných dat. Uživatel tak získává lepší představu o podobě rozdělení, kterým se data řídí.}
+        \label{sub:violin_violin}
+    \end{subfigure}
+    
+    \caption{Porovnání krabicového a houslového grafu na datové sadě řídící se bimodální distribucí. Je patrné, že houslový graf značně lépe vystihuje opravdové chování dat. Zdrojový kód, ze kterého čerpá obrázek inspiraci, je dostupný z \cite{violin_plot}.}%
+    \label{box_violin_plots}%
+\end{figure}
+
+
+
+\chapter{Analýza datových sad}
+\label{datasets_analysis}
+
+
+Práce se bude zabývat datovými sadami, které vznikly na \emph{Fakultě elektrotechniky a komunikačních technologií} a \emph{Fakultě informačních technologií} spadající pod \emph{Vysoké učení technické v Brně}. Sady jsou veřejně dostupné na GitHubu v repositáři \cite{matousek_git}. Celkově se jedná o 10 datových sad, z nichž 4 zachycují běžný provoz (viz \ref{basic_datasets}) a zbylých 6 zachycuje provoz, ve kterém se vyskytuje útok (viz \ref{attack_datasets}). Sady jsou ve formátu CSV a obsahují záznamy komunikací ve SCADA systémech využívajících protokolu IEC 104 (viz \ref{iec_104}). Každý řádek (záznam) v CSV souborech reprezentuje jeden zachycený paket a každý sloupec jeden atribut komunikace. Atributy jsou podrobněji popsány v podkapitole \ref{polozky_datovych_sad}.  V poslední podkapitole \ref{methods} jsou pak popsány metody pro analýzu sad.
+
+\section{Datové sady s běžným provozem}
+\label{basic_datasets}
+
+Datové sady s běžným provozem obsahují záznamy komunikace, která probíhala standardním způsobem a nebyla ovlivněna žádnými útoky nebo anomáliemi. Základní vlastnosti sad jsou popsány v~tabulce \ref{tab:datasets_overview}. Pro zjednodušení orientace v textu, bude před představením datových sad zavedeno jejich značení písmeny z latinské abecedy. V práci budou dále užívána pouze značení definována ve výčtu:
+\begin{itemize}
+    \item \textbf{A:} \texttt{mega104-14-12-18-ioa.csv}
+    \item \textbf{B:} \texttt{mega104-17-12-18-ioa.csv}
+    \item \textbf{C:} \texttt{10122018-104Mega-ioa.csv}
+    \item \textbf{D:} \texttt{13122018-mega104-ioa.csv}
+\end{itemize}
+
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabularx}{\textwidth}{|Y|c|c|c|c|}
+        \hline
+                                                         & \textbf{A}  & \textbf{B}  & \textbf{C}  & \textbf{D}  \\ \hline
+        \textbf{Celkový počet paketů}                        & 14597       & 58930       & 104533      & 1460829     \\ \hline
+        \textbf{Časový interval}                             & 15:38:01.17 & 67:55:00.59 & 04:53:21.02 & 71:17:34.79 \\ \hline
+        \textbf{Počet zařízení}                              & 2           & 2           & 4           & 14          \\ \hline
+        \textbf{Počet kom. dvojic}                                & 1           & 1           & 3           & 13          \\ \hline
+        \multirow{2}{*}{\textbf{Master $\rightarrow$ Slave}} & 10151       & 40330       & 80243       & 1118552     \\ \cline{2-5} 
+                                                             & 69.54\%     & 68.44\%     & 76.76\%     & 76.57\%     \\ \hline
+        \multirow{2}{*}{\textbf{Slave $\rightarrow$ Master}} & 4446        & 18600       & 24290       & 342277      \\ \cline{2-5} 
+                                                             & 30.46\%     & 31.56\%     & 23.24\%     & 23.43\%     \\ \hline
+    \end{tabularx}
+    \caption{Přehled základních statistik datových sad. Pod pojmem \emph{Master $\rightarrow$ Slave} se rozumí počet paketů ve směru od řídící stanice k libovolné podřízené stanici. Pod pojmem \emph{Slave $\rightarrow$ Master} se rozumí počet paketů ve směru od libovolné podřízené stanice k nadřízené stanici.}
+    \label{tab:datasets_overview}
+\end{table}
+
+
+Datové sady A a B zachycují komunikaci v tvz. \emph{peer-to-peer} profilu, který reprezentuje komunikaci mezi dvěma uzly \cite{anomaly_detection_ics}. U datové sady A se jedná o komunikaci mezi řídící stanici \texttt{192.168.11.248:2404} a podřízenou stanicí \texttt{192.168.11.111:56693}. U datové sady B vystupuje řídící stanice pod stejnou adresou, ale komunikuje s podřízenou stanicí s adresou \texttt{192.168.11.111:61254}.
+
+Datové sady C a D zachycují komunikaci v tzv. \emph{master-oriented} profilu, který reprezentuje komunikaci, kde vystupuje jedna řídící stanice a několik podřízených stanic. Ukázka průběhu \emph{master-oriented} komunikace je na obrázku \ref{master-oriented}. Jak v datové sadě C, tak v datové sadě D je adresa řídící stanice \texttt{192.168.11.248:2404}. Podřízené stanice v obou datových sadách vystupují pod IP adresou \texttt{192.168.11.111} a liší se pouze v hodnotě portu. V datové sadě C se objevují stanice s porty \texttt{49784}, \texttt{49830} a \texttt{49849}. V datové sadě D jsou hodnoty portů \texttt{49849}, \texttt{50874}, \texttt{51197}, \texttt{51696}, \texttt{52142}, \texttt{52351}, \texttt{53015}, \texttt{53174}, \texttt{54224}, \texttt{55223}, \texttt{55382}, \texttt{55675} a \texttt{56693}.
+
+
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.7\textwidth]{obrazky-figures/master-oriented.pdf}
+	\caption{Schéma komunikace \emph{master-oriented} profilu. Řídící stanice periodicky komunikuje s množinou podřízených stanic a obsluhuje vždy pouze jednu podřízenou stanici. Z~toho vyplývá, že komunikace probíhá v jednom okamžiku pouze mezi dvěma zařízeními \cite{anomaly_detection_ics}.}
+	\label{master-oriented}
+\end{figure}
+
+
+
+
+\section{Datové sady s útoky}
+\label{attack_datasets}
+
+Datové sady s útoky vznikly v rámci projektu \emph{Bezpečnostní monitorování řídící komunikace ICS v energetických sítích (BONNET)}\footnote{\url{https://www.fit.vut.cz/research/project/1303/.en}} na \emph{Fakultě informačních technologií Vysokého učení technického v Brně}. Sady obsahují záznamy komunikace, ve které byl uměle nasimulován útok nebo anomálie. Jedná se o upravené verze jedné ze základních sad představených v~podkapitole \ref{basic_datasets}, konkrétně sady B. Všechny útoky byly generovány na aplikační vrstvě. Názvy sad a jejich popis je uveden výčtem:
+
+\begin{itemize}
+    \item \texttt{connection-loss.cvs:} v rámci komunikace dochází dvakrát ke ztrátě spojení. Konkrétně v časech:
+    \begin{enumerate}
+        \item od 16:27:57.68 do 16:37:48.63 (10 minut, 146 chybějících paketů)
+        \item od 08:08:01.20 do 09:08:25.95 (1 hodina, 921 chybějících paketů)
+    \end{enumerate}
+    \item \texttt{switching-attack.csv:} cílem útoku je zapnutí/vypnutí zařízení. Celkově je odesláno 24 sérií paketů s parametry $asduType=46$ (Double cmd), $numix=1$, $cot=6$ (Act), $cot=7$ (ActCon), $cot=10$ (ActTerm), $oa=0$, $addr=655535$, $ioa=2$. Útok začíná v čase 06:27:55:00, trvá 10 minut a do komunikace zanáší 72 nových paketů.
+    
+    \item \texttt{scanning-attack.csv:}
+    horizontální a vertikální skenování. Útok tohoto typu je možné provést díky zranitelnosti IEC 104 protokolu popsané v sekci \emph{Neautentizovaný přístup} v podkapitole \ref{unauthorized_access}.
+    \begin{enumerate}
+        \item 
+        Cílem horizontálního skenování je nalezení IP adresy řídící stanice. Útok začíná v čase 10:32:07 a končí v 10:49:10.
+        Z podvržené adresy \texttt{192.168.11.102:45280} jsou odesílány IEC 104 U-příkazy \emph{TestFrame Act} (s atributy $fmt=0x03$, $uType=0x10$) na port 2404 používaný řídící stanicí. Pokud se řídící stanice na dané IP adrese nachází, odpoví paketem \emph{TestFrame Conf} (s atributy $fmt=0x03$, $uType=0x20$).
+    
+        \item 
+        \sloppy Vertikální skenování prozkoumává informační objekty zařízení. V tomto případě je útok směřován na zařízení s IP adresou \texttt{192.168.11.111}. Za účelem skrytí své identity, používá útočník podvrženou IP adresu \texttt{192.168.11.248}, která patří řídící stanici. Útočník odesílá dotaz s atributy $asduType=100$ (General Interrogation) a $cot=6$ (Activation). Pokud  informační objekt existuje, odesílá napadené zařízení odpověď s atributy $asduType=100$ (General Interrogation) a~$cot=7$ (Activation Conf), jinak odesílá odpoveď s atributem $cot=47$ (Unknown object address). K útoku se využívají výchozí hodnoty atributů $addr=65535$ a~$oa=0$. Přestože je ioa adresa dlouhá 16 bitů (a může tedy nabývat $2^{16}$ hodnot), útok prohledává pouze hodnoty adres od 0 do 127. Útok začíná v čase 01:02:18 a končí v 01:23:19.
+    \end{enumerate}
+    \item \texttt{dos-attack.csv:}
+    útočník se snaží zahltit systém stovkami legitimních požadavků. K tomu používá podvrženou IP adresu \texttt{192.168.11.248}, ze které posílá pakety s~atributy $asduType=36$ (Measured value, short floating point, with time tag) a~$cot=3$ (Spontaneous event). Útok začíná v 23:50:02 a končí v 01:18:29. Obsahuje celkově 1049 podvržených požadavků. Další útok je opakován v 02:30:05 a trvá do 04:01:54.
+    
+    \item \texttt{rogue-devices.csv:}
+    do systému je zaneseno tzv. \emph{rogue}\footnote{Zařízení, které je neoprávněně zavedeno do sítě, za účelem poškození provozovatele sítě. Může např. odposlouchávat komunikaci v síti, odesílat podvržené kontrolní příkazy jiným zařízením nebo provádět jiné aktivity, které představují bezpečnostní hrozbu pro provozovatele nebo uživatele sítě.} zařízení, které se vydává za legitimní IEC 104 zařízení s IP adresou \texttt{192.168.11.246}. Útočník používá ke komunikaci sekvenci paketů s atributy $asduType=36$ (Measured value, short floating point with time tag) a $cot=3$ (Spontaneous event). Útok začíná v 15:19:00 a končí v~15:46:03.
+    
+    \item \texttt{injection-attack.cvs:}
+    Útočník odesílá neobvyklé požadavky s atributy $asduType=45$ (Single command) a $cot=6$ (Activation) na informační objekt s $ioa \subseteq \{2, 31, 32 \}$. Zacílená stanice odesílá odpověď s parametrem $cot=7$ (Activation Conf). Útok začíná v 19:35:19, končí v 19:41:06 a skládá se z 83 paketů.
+    
+    Další útok typu \emph{injection attack} se objevuje v 21:05:32, kdy útočník zahájí přenos souboru do napadené stanice s IP adresou \texttt{192.168.11.111}. Útočník odesílá pakety s atributy $asduType$ 122 (Call directory, select file), 120 (File ready), 121 (Section ready), 123 (Last section), 124 (Ack file) a 125 (Segment). Útočník přistupuje k informačnímu objektu s $ioa=65537$, který není typicky přístupný. Útok končí v 21:21:14 a skládá se z 221 paketů.
+\end{itemize}
+
+
+
+\section{Atributy datových sad}
+
+Všechny popsané sady obsahují těchto 16 atributů:
+
+\begin{itemize}
+    \item \textbf{TimeStamp:} Časové razítko paketu.
+    \item \textbf{Relative Time:} Relativní čas zachycení paketu v rámci datové sady v sekundách.
+    \item \textbf{srcIP:} IP adresa zdrojové stanice.
+    \item \textbf{dstIP:} IP adresa cílové stanice.
+    \item \textbf{srcPort:} Port zdrojové stanice.
+    \item \textbf{dstPort:} Port cílové stanice.
+    \item \textbf{ipLen:} Délka IP paketu.
+    \item \textbf{len:} Délka aplikačních dat.
+    \item \textbf{fmt:} Formát APCI jednotky (viz \ref{apci_unit}). Konkrétní hodnoty vyskytující se v dostupných datových sadách:
+    \begin{itemize}
+        \item \texttt{0x00}: I-format
+        \item \texttt{0x01}: S-format
+        \item \texttt{0x03}: U-format
+    \end{itemize}
+    \item \textbf{uType:} Funkce rámce, pouze pro pakety v U-formátu.
+    \item \textbf{asduType:} Typ ASDU jednotky. (viz \ref{asdu_types_table})
+    \item \textbf{numix:} Počet hodnot v IOA poli.
+    \item \textbf{cot:} Důvod přenosu (viz \ref{polozky_asdu}).
+    \item \textbf{oa:} Adresa původce. Z angl. zkratky pro \emph{originator address}.
+    \item \textbf{addr:} Linková adresa zařízení, může být dlouhá 8 nebo 16 bitů. Hodnoty \texttt{\#FF} a \texttt{\#FFFF} reprezentují broadcastové adresy.
+    \item \textbf{ioa:} Pole adres informačních objektů (viz \ref{polozky_asdu}).
+\end{itemize}
+
+
+\label{polozky_datovych_sad}
+
+
+
+
+
+
+\section{Metody popisu ICS komunikace}
+\label{methods}
+
+V této podkapitole budou představeny metody, které mohou být použity k analýze datových sad popsaných v podkapitolách \ref{basic_datasets} a \ref{attack_datasets}. Vhledy, které se analýzou získají, poskytují uživateli celkový přehled o odchycené komunikaci a~umožňují mu odhalit případné neočekávané události, útoky a anomálie.
+
+\subsection{Počet paketů v čase}
+\label{packet_counting}
+
+Jendou z nejzákladnějších vlastností, kterou lze u průmyslové komunikace sledovat, je jednoduché měření počtu paketů v čase. Měření se většinou provádí pro jednu komunikační dvojici, ale lze provést agregovaně i pro více stanic současně. V první řadě je potřeba zvolit velikost časového okna, ve kterém se bude počet paketů měřit. Úskalí volby velikosti časového okna jsou popsány dále v této podkapitole v sekci \emph{Volba velikosti časového okna}. Výsledky lze vizualizovat pomocí spojnicového grafu. Graf přehledně zobrazuje počty paketů v jednotlivých časových oknech a jejich vývoj v čase. Uživatel by měl být schopen~z grafu vyčíst průběh sledované komunikace, její stabilitu, nebo případně nalézt její výpadky.
+
+Jedním z možných rozšíření grafů, které vyobrazují komunikaci mezi dvěma stanicemi, je vynesení celkově tří křivek. Jednu křivku pro počet paketů ve směru od řídící stanici~k podřízené (dále jen \emph{M2S}), další pro počet paketů ve směru od podřízené stanice k řídící (dále jen \emph{S2M}) a poslední pro součet obou směrů. Ukázka rozšíření je znázorněna na obrázku \ref{graph1}.
+
+\subsection*{Volba velikosti časového okna}
+\label{time_window_size}
+
+Volba velikosti časového okna je důležitým faktorem, který může představovat rozdíl mezi kvalitní a nekvalitní analýzou komunikace. Závisí na vlastnostech datové sady a na míře detailu, kterou uživatel vyžaduje. Ukázka dopadu velikosti časových oken na podobu spojnicových grafů je na obrázku \ref{fig:plot_var_sizes}.
+
+V případě volby příliš malých časových oken, může dojít k vynulování některých oken a uživatel může nesprávně nabýt dojmu, že na některých místech došlo k výpadku komunikace. Ve skutečnosti je pouze velikost zvoleného časového okna menší než přirozená prodleva paketů v komunikaci. Příliš malé hodnoty také zanášejí do grafů šum, který ztěžuje jejich čitelnost (viz \ref{sub:first}).
+
+V případě volby příliš velkých časových oken, můžou naopak některé výpadky být uživateli zcela skryty. Uživatel může např. zvolit 60 minutové okno a zkoumat komunikaci kde došlo k výpadku na 5 minut. V takovém případě bude vliv výpadku na hodnotu v časovém okně minimální a z grafu nebude možné anomálii vyčíst (viz \ref{sub:third}).
+
+
+\begin{figure}[H]
+	\centering
+	\resizebox{1\textwidth}{!}
+    {
+        \input{pgf/time_series.pgf}
+    }
+    \caption{Spojnicový graf znázorňující počet zachycených paketů na záznamu komunikace z datové sady B a to konkrétně mezi stanicemi \texttt{192.168.11.248:2404} (master)~a \texttt{192.168.11.111:61254} (slave). Velikost časových oken je 10 minut. Z grafu lze vidět, že tok paketů ve směru od podřízené stanice k řídící je v průběhu celého dne stabilní. V opačném směru je situace odlišná a jeví se, že během noci dochází k útlumu toku. Rozdělení komunikace na jednotlivé směry přináší nové hodnotné informace, které by jinak nebyly vidět.}
+	\label{graph1}
+\end{figure}
+
+
+\begin{figure}[H]%
+    \centering
+    \begin{subfigure}{\textwidth}
+        \centering
+        \resizebox{\textwidth}{!}
+        {
+            \input{pgf/time_series_5s.pgf}
+        }
+        \captionsetup{width=.9\linewidth}
+        \caption{Velikost časového okna: 5~s. Graf je příliš jemný a obsahuje hodně šumu.}
+        \label{sub:first}
+    \end{subfigure}
+    
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \resizebox{\textwidth}{!}
+        {
+            \input{pgf/time_series_60s.pgf}
+        }
+        \captionsetup{width=.9\linewidth}
+        \caption{Velikost časového okna: 1~min. Ideální volba časového okna, ve které lze výpadek jednoduše nalézt.}
+    
+        \label{sub:second}
+    \end{subfigure}
+    
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \resizebox{\textwidth}{!}
+        {
+            \input{pgf/time_series_600s.pgf}
+        }
+        \captionsetup{width=.9\linewidth}
+        \caption{Velikost časového okna: 10~min. Graf je příliš hrubý a informace o výpadku v něm nelze vyčíst.}
+        \label{sub:third}
+    \end{subfigure}
+    
+    \caption{Ukázka dopadu volby velikosti časového okna na čitelnost a informační hodnotu grafů. Do výstřižku komunikace z datové sady A (mezi stanicemi \texttt{192.168.11.248:2404} a \texttt{192.168.11.111:56693}) byl uměle zaveden výpadek v čase od 18:15 do 18:17. Z uživatelského hlediska je v tomto případě vhodná pouze volba časového okna o velikosti $60\,s$. Zbylé dva grafy mají pro uživatele nízkou informační hodnotu.}%
+    \label{fig:plot_var_sizes}%
+\end{figure}
+
+
+
+
+\subsection{Komunikující dvojice}
+\label{master-orinted_plot}
+
+V \emph{master-oriented} komunikačním profilu, který je znázorněn na obrázku \ref{master-oriented}, komunikuje řídící stanice v jeden okamžik pouze s jednou podřízenou stanicí. Lze tedy sestavit graf, který zobrazuje kdy probíhá komunikace s jednotlivými podřízenými stanicemi. Ukázka takového grafu je na obrázku \ref{graph3}. Díky tomuto grafu je možné určit v jakých časech došlo k přepnutí komunikačních dvojic a jak dlouho řídící stanice komunikovala s jednotlivými podřízenými stanicemi.
+
+\begin{figure}[H]
+	\centering
+	\resizebox{1\textwidth}{!}
+    {
+        \input{pgf/slaves_plot.pgf}
+    }
+    \caption{Ukázka grafu pro analázu \emph{master-oriented} komunikace v datové sadě D. Řídící stanice střídavě komunikuje celkově se 13 podřízenými stanicemi. Velikost časového okna je 10 minut.}
+	\label{graph3}
+\end{figure}
+
+\subsection{Inter-arrival time}
+\label{inter-arrival_time}
+
+Hodnota \emph{Inter-arrival time} ($\Delta t$) reprezentuje uběhnutý čas mezi zachycením dvou po sobě jdoucích paketů v komunikaci. Hodnotu $\Delta t$ je možné měřit zvlášť pro jeden směr, nebo pro oba směry zároveň. V případě IEC 104 protokolu a \emph{master-oriented} komunikačního profilu se jeví jako výhodnější použití obousměrného měření \cite{anomaly_detection_ics}.
+
+Inter-arrival time může být využit k výpočtu jeho popisných charakteristik míry a variability nad celou datovou sadou. V takovém případě lze sledovat např. následující vlastnosti:
+
+\begin{itemize}
+    \item \textbf{Minimální hodnota:} pomáhá uživateli s výběrem velikosti časového okna. Velikost časového okna by měla být vždy výrazně větší než minimální hodnota inter-arrival time. V opačném případě dochází ke ztrátě informace ve spojnicovém grafu. 
+    \item \textbf{Maximální hodnota:} v případě že je maximální hodnota výrazně vychýlená od~střední hodnoty a třetího kvartilu, může to značit, že se v komunikaci nachází delší doba, kdy komunikace neprobíhala. Tzn. v komunikaci může být výpadek nebo útok.
+    \item \textbf{Střední hodnota:} napovídá jaká asi byla \uv{obvyklá} pozorovaná hodnota. V kombinaci s mediánem pomáhá odhalit případnou asymetričnost rozložení hodnot inter-arrival time.
+\end{itemize}
+
+
+\subsection{Stabilita atributů}
+\label{attribute_stability}
+
+Důležitým ukazatelem, který umožňuje uživateli detekovat anomálie v komunikaci, je stabilita hodnot atributů IEC 104 komunikace. Datová sada je opět rozdělena do časových oken, pro která se počítá počet odchycených paketů s danou hodnotou atributu. Pro některé hodnoty některých atributů je pak typické, že jsou jejich toky stabilní, případně opisují nějakou periodickou křivku. Kromě sestrojení spojnicového grafu je vhodné využít i popisných charakteristik míry a variability.
+
+\subsection*{Ukázka použití metody na datové sadě B}
+
+Za účelem ukázky metody byla vybrána datová sada B na celém jejím časovém intervalu. Zkoumaným atributem je \emph{ipLen} a všechny jeho hodnoty, kterých v datové sadě nabývá (celkově 5 hodnot). Velikost časového okna je 5 minut. Předzpracování dat do časových oken je naznačeno v tabulce \ref{tab:windows}. Vykreslením hodnot tabulky vzniká spojnicový graf, který je vyobrazen na obrázku \ref{graph_attributes}. Základní charakteristiky míry a variablity jsou popsány v~tabulce \ref{tab:attribute_characteristic}.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+         & 46 & 90 & 67 & 82 & 97 \\ \hline
+14:45    & 23 & 0  & 61 & 1  & 0  \\ \hline
+14:50    & 24 & 0  & 61 & 0  & 0  \\ \hline
+$\cdots$ &    &    &    &    &    \\ \hline
+10:25    & 22 & 0  & 66 & 1  & 0  \\ \hline
+10:30    & 24 & 0  & 64 & 0  & 0  \\ \hline
+\end{tabular}
+\caption{Tabulka časových oken pro jednotlivé hodnoty atributu \emph{ipLen}. Hodnoty buněk značí, kolik paketů s danou hodnotou atributu \emph{ipLen} bylo zachyceno v daném časovém okně. V tabulce jsou uvedeny začátky časových oken. První a poslední časová okna nejsou uvedena, jelikož jejich délka je kratší než 5 minut a zkreslovala by statistiky.}
+\label{tab:windows}
+\end{table}
+
+
+\begin{figure}[H]
+	\centering
+	\resizebox{1\textwidth}{!}
+    {
+        \input{pgf/attribute_series.pgf}
+    }
+    \caption{Spojnicový graf znázorňující průběhy toků paketů s různými hodnotami atributu \emph{ipLen}. Graf vychází z tabulky \ref{tab:windows}.}
+	\label{graph_attributes}
+\end{figure}
+
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+   & $\mu$ & $\sigma$ & $\mu - 3 \sigma$ & $\mu + 3 \sigma$ & Outliers \\ \hline
+46 & 26,09 & 2,58     & 18,33            & 33,87            & 2         \\ \hline
+67 & 45,95 & 11,51    & 11,39            & 80,51            & 0         \\ \hline
+82 & 0,24  & 0,48     & -1,22            & 1,70             & 20        \\ \hline
+97 & 0,00  & 0,05     & -0,15            & 0,51             & 2         \\ \hline
+\end{tabular}
+\caption{Základní popisné charakteristiky jednotlivých hodnot atributu \emph{ipLen}. Hodnota \uv{90} není uvedena, jelikož se nachází pouze v prvním časovém okně, které nebylo do statistik započítáno. Sloupec \uv{Outliers} udává, kolik hodnot spadá mimo interval $\langle{\mu-3\sigma,\mu+3\sigma}\rangle$.}
+\label{tab:attribute_characteristic}
+\end{table}
+
+Z údajů, které poskytují graf \ref{graph_attributes} a tabulka \ref{tab:attribute_characteristic} lze vyvodit, které atributy se chovají stabilně a předvídatelně. Cílem analýzy ICS komunikace je nalezení takových atributů, které mohou pomoci s detekcí útoků a anomálií. Ideálně by měl atribut mít malou velikost intervalu $\langle{\mu-3\sigma,\mu+3\sigma}\rangle$ a spodní hranice by měla být větší jak 0, tak aby bylo možné detekovat i výpadky. Ve výše uvedeném příkladě se jeví jako ideální hodnota 46 která splňuje oba požadavky. Pokud je interval příliš velký, je těžké zachytit odlehlé hodnoty. To lze pozorovat u hodnoty atributu 67, která má velký rozptyl a nebyla detekována žádná hodnota mimo interval $3\sigma$. Hodnoty atributů, které se v grafu pohybují kolem nuly, nemá příliš smysl uvažovat.
+
+
+\chapter{Návrh aplikace ICS Analyzer}
+\label{chapter_design}
+
+Tato kapitola se zabývá návrhem nového nástroje, který slouží pro statistickou analýzu a~vizualizaci dat průmyslové komunikace využívající protokolu IEC 104. Za tímto účelem byla navržena \emph{desktopová} aplikace \emph{ICS Analyzer}. Před samotným představením aplikace jsou nejprve v podkapitole \ref{actual_solution} popsány nedostatky v aktuálně dostupných možnostech analýzy. Následuje popis požadavků, které by mělo navrhované řešení splňovat (viz \ref{requirements}). Významnou součástí návrhu je způsob, kterým nástroj přistupuje ke zpracování dat, jenž je uveden v podkapitole \ref{data_processing}. Poslední podkapitola \ref{user_interface} se zabývá popisem navrženého uživatelského rozhraní.
+
+
+\section{Stávající řešení}
+\label{actual_solution}
+
+Aktuálně neexistuje volně dostupný nástroj, který by uživateli umožňoval jednoduše zpracovat a analyzovat datové sady průmyslové komunikace ve formátu \texttt{csv}. Uživatel je odkázán na \uv{ruční} zpracování dat. Za tímto účelem lze použít např. tabulkové procesory jako je \emph{Microsoft Excel} nebo \emph{LibreOffice Calc}, které ovšem nejsou stavěny pro zpracování rozsáhlých datových sad (např. nástroj \emph{LibreOffice Calc} nedokáže načíst celou datovou sadu D) a~navíc vyžadují hlubokou znalost použitého nástroje. Další možností je použití programovacích jazyků \emph{Python} (s využitím knihovny \emph{Pandas}) nebo \emph{R}, které nabízejí uživateli nástroje pro zpracování obecných tabulkových dat. Mimo požadavku na znalost těchto jazyků je problémem vysoká míra úsilí, které musí uživatel vynaložit, aby z dat získal relevantní vhledy. Uživatel musí vždy nejprve provést několik časové náročných kroků (jako např. načtení dat, vytvoření filtrů, vykreslení grafů atd.), které odvádí jeho pozornost od samotné analýzy. Aplikace \emph{ICS Analyzer} bude tyto kroky provádět automaticky a nabídne tak uživateli možnost se plně soustředit na analýzu datové sady.
+
+
+\section{Analýza požadavků}
+\label{requirements}
+
+Primárním cílem navrhované aplikace je poskytnutí rychlého a jednoduchého způsobu analýzy datových sad průmyslové komunikace. Uživatel by neměl být zatěžován nepodstatnými úkony a měl by mít možnost se soustředit pouze na samotnou analýzu komunikace. Aplikace by měla uživateli poskytovat relevantní vhledy o zkoumané komunikaci a usnadňovat tak nalezení stabilních charakteristik nebo případných anomálií v komunikaci. Konkrétní možnosti interakce uživatele s aplikací jsou znázorněny diagramem užití na obrázku \ref{fig:use-case}. Celkové požadavky lze rozdělit do několika kategorií:
+
+\begin{itemize}
+
+    \item \textbf{Načítání datové sady:} aplikace by měla umožňovat přímočaře načíst datovou sadu ze souboru ve formátu \texttt{csv}. Přestože bude primárním využitím aplikace analýza datových sad popsaných v podkapitole \ref{basic_datasets}, měla by být koncipována tak, aby byla co nejobecnější a mohla být využita i pro jiné datové sady. Podrobnější popis průběhu načítání a podmínky, které musí datová sada splňovat, jsou blíže popsány v podkapitole \ref{dataset_loading}. 
+    
+    \item \textbf{Přehledné zobrazení sady:} soubory ve formátu \texttt{csv} bývají pro uživatele nepřehledné a obtížně čitelné. Z tohoto důvodu by měla aplikace nabízet možnost zobrazení načtených dat v přehledné tabulce.
+    
+    \item \textbf{Zobrazení základních statistik datových sad:} před zahájením podrobnějšího zkoumání datové sady je vhodné, aby uživatel získal základní představu o její podobě. Z tohoto důvodu by měla aplikace uživateli poskytovat základní popisné statistiky o~načtených datech.
+    
+    \item \textbf{Filtrace datové sady:} v některých případech může uživatel chtít analyzovat pouze část načtené datové sady, která splňuje jím zvolené podmínky. Aplikace by měla uživateli nabízet možnost filtrace datové sady na základě různých kritérií. Návrh systému filtrace je blíže popsán v sekci \ref{filters}.
+    
+    \item \textbf{Nastavení velikosti časových oken:} klíčovou součástí analýzy je zobrazení počtu zachycených paketů (různých typů) v jednotlivých časových oknech. Velikost časového okna je proto důležitým parametrem, který by měl být nastavitelný.
+    
+    \item \textbf{Analýza komunikace:} aplikace by měla disponovat sadou pohledů, které umožní uživateli nalézt stabilní charakteristiky nebo anomálie v komunikaci. Vhledy by měly vycházet z metod popsaných v kapitole \ref{methods}. Popis implementovaných vhledů je uveden v podkapitole \ref{tab_views}.
+    
+    
+\end{itemize}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.6\textwidth]{obrazky-figures/use-case.pdf}
+	\caption{Diagram případu užití (angl. \emph{use case}) demonstrující různé způsoby, kterými uživatel může interagovat s aplikací.}
+	\label{fig:use-case}
+\end{figure}
+
+
+
+\section{Způsob zpracování dat}
+\label{data_processing}
+
+
+Důležitou součástí návrhu je způsob zpracování datové sady a to od jejího načtení po generování statistik a grafů. Aplikace bude pro manipulaci s daty na pozadí využívat knihovny \emph{Pandas} a její datové struktury zvané \uv{datový rámec} (angl. \emph{dataframe}, viz konec podkapitoly \ref{tools_and_libs}). Navržená sekvence zpracování je vyjádřena blokovým schématem na obrázku \ref{fig:block_diagram}. Její jednotlivé kroky jsou:
+
+\begin{enumerate}
+    \item \textbf{Načtení datového souboru:} v první řadě je potřeba datový soubor korektně načíst. Z dat obsažených v souboru v \emph{csv} formátu se vytvoří datový rámec, který jednotlivým atributům přiřadí datové typy. V tomto kroku je důležité, aby byly datové typy správně zvoleny, jinak načtení selže. Aplikace by měla provádět automatickou detekci datových typů a umožňovat uživateli jejich případnou změnu.
+    \item \textbf{Převod do vnitřní reprezentace:} po načtení dat se do datového rámce přidají nové sloupce, které budou uživateli skryty a usnadní (programátorovi) další zpracování. Jedná se např. o sloupce pro označení stanic vnitřním identifikačním číslem apod.
+    \item \textbf{Filtrování dat:} filtrace dat bude probíhat na základě pěti kritérií, které bude moct uživatel měnit. Datový rámec bude vyfiltrován tak, aby splňoval všechna nastavená kritéria. Výčet filtrů je uveden v podkapitole \ref{filters}.
+    \item \textbf{Transformace dat na časová okna:} před zobrazením grafů bude potřeba data přetransformovat do podoby, která agreguje data do časových oken, jejichž velikost je volena uživatelem. Tato transformace je blíže popsána v sekci \ref{data_transformation}.
+    \item \textbf{Sběr statistik:} ve chvíli kdy budou data vhodně předzpracována, bude možné začít generovat statistiky a grafy. Zatímco generování grafů očekává data již transformovaná na časová okna, některé statistiky tento krok vyžadovat nebudou. 
+\end{enumerate}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\textwidth]{obrazky-figures/block_diagram.pdf}
+	\caption{Blokové schéma (angl. \emph{block diagram}) ukazující průběh zpracování datové sady.}
+	\label{fig:block_diagram}
+\end{figure}
+
+
+\subsection{Filtrace datové sady}
+\label{filters}
+
+Aplikace bude nabízet celkově 5 kriterií, pomocí kterých bude možné filtrovat datovou sadu:
+
+\begin{itemize}
+        \item Adresa řídící stanice
+        \item Adresy podřízených stanic
+        \item Směr komunikace
+        \item Začátek a konec komunikace (interval)
+        \item Hodnoty zvoleného atributu
+\end{itemize}
+
+
+\subsection{Transformace dat na časová okna}
+\label{data_transformation}
+
+Pomocí transformace dat na časová okna lze z dat lépe získávat informaci o počtu zaznamenaných paketů s danou hodnotou atributu v daném intervale. V tabulce původních dat se nejprve vybere atribut, pro který se provede transformace. Aby měla transformace smysl, měl by atribut nabývat kategorických hodnot. Nemá smysl provádět transformaci pro spojité atributy (např. relativní čas), protože by se v nové tabulce objevovaly pouze záznamy (řádky) s jedinou nenulovou hodnotou. Následně se vytvoří nová tabulka, ve které jsou z jednotlivých hodnot vybraného atributu vytvořeny nové sloupce, které reprezentují absolutní četnost jejich zastoupení v časových oknech. Agregační funkcí je v tomto případě funkce \emph{počet}. Grafické znázornění transformace je ukázáno na obrázku \ref{fig:transformace_tabulky}.
+
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\node (A)
+{
+            \begin{tabularx}{0.6\textwidth}{|Y|c|c|c|}
+            \hline
+            \textbf{Začátek časového okna} & \textbf{a} & \textbf{b} & \textbf{c} \\ \hline
+            17:50     & 1          & 2          & 0          \\ \hline
+            17:55     & 1          & 0          & 0          \\ \hline
+            18:00     & 3          & 0          & 0          \\ \hline
+            18:05     & 0          & 1          & 1          \\ \hline
+            \end{tabularx}
+};
+\node (B) [xshift=0cm, yshift={4.5cm}, at=(A)]
+{
+        \begin{tabularx}{0.6\textwidth}{|Y|c|}
+            \hline
+            \textbf{Časové razítko} & \textbf{Hodnota atributu} \\ \hline
+            17:52:18       & a                \\ \hline
+            17:52:24       & b                \\ \hline
+            17:53:50       & b                \\ \hline
+            \rowcolor[HTML]{EEEEEE}
+            17:57:43       & a                \\ \hline
+            18:01:17       & a                \\ \hline
+            18:02:28       & a                \\ \hline
+            18:02:45       & a                \\ \hline
+            \rowcolor[HTML]{EEEEEE}
+            18:06:33       & b                \\ \hline
+            \rowcolor[HTML]{EEEEEE}
+            18:06:42       & c                \\ \hline
+            \end{tabularx}
+
+};
+\draw[->,ultra thick](B)--(A);
+\end{tikzpicture}
+\caption{Ukázka transformace dat na časová okna na náhodně vygenerovaných datech. Hodnoty atributu ($a$, $b$, $c$) byly vybrány pouze pro ilustrační účely. Velikost časového okna je 5 minut a agregační funkcí je funkce \emph{počet}.}
+\label{fig:transformace_tabulky}
+\end{figure}
+
+\noindent \emph{Poznámka: Kromě funkce počet existují další široce užívané agregačních funkce. V případě, že atribut je číselného typu, lze použít např. funkce pro výpočet sumy, výpočet střední hodnoty, nalezení minima nebo maxima apod. Existuje i možnost vytvoření vlastní agregační funkce. V této práci je však využita pouze agregační funkce počet.}
+
+
+\section{Uživatelské rozhraní}
+\label{user_interface}
+
+Uživatelské rozhraní aplikace se bude skládat z menu, informačního panelu a šesti karet. Společně tyto prvky budou tvořit přímočarý nástroj pro analýzu průmyslové komunikace.
+
+
+\subsection*{Menu}
+
+Menu bude hlavním prostředkem ovládání aplikace a bude nabízet 3 skupiny příkazů. Hierarchie příkazů a jejich funkcionalita je popsána výčtem:
+
+\begin{enumerate}
+    \item \textbf{File:} přikazy pro základní ovládání aplikace.
+    \begin{itemize}
+        \item \textbf{Load csv:} otevření dialogu pro načtení \texttt{csv} souboru. Načítání datové sady bude blíže popsáno v podkapitole \ref{dataset_loading}.
+        \item \textbf{Exit:} ukončení aplikace.
+    \end{itemize}
+    
+    \item \textbf{Filter:} příkazy pro filtraci datové sady.
+    \begin{itemize}
+        \item \textbf{Select master station:} otevření dialogu pro výběr řídící stanice.
+        \item \textbf{Select slaves:} otevření dialogu pro výběr podmnožiny podřízených stanic. Výběr bude omezen na stanice, které komunikují s již zvolenou řídící stanicí.
+        \item \textbf{Select direction:} otevření dialogu pro filtraci komunikace podle směru. Celkově budou k dispozici 3 druhy filtrace: obousměrná, M2S a S2M.
+        \item \textbf{Change start and end time:} otevření dialogu pro omezení zkoumaného intervalu datové sady. Uživatel bude moct volit jeho začátek a konec.
+        \item \textbf{Change time window size:} otevření dialogu pro změnu velikosti časového okna.
+        \item \textbf{Select attribute:} otevření dialogu pro výběr atributu.
+        \item \textbf{Select attribute values:} otevření dialogu pro výběr konkrétních hodnot již zvoleného atributu.
+    \end{itemize}
+    
+    \item \textbf{Help:} příkazy nápovědy.
+    \begin{itemize}
+        \item \textbf{Show help:} zobrazení nápovědy.
+        \item \textbf{About:} zobrazení základních informací o aplikaci.
+    \end{itemize}
+\end{enumerate}
+
+
+\subsection*{Informační panel}
+
+
+Informační panel by měl být vždy viditelným prvkem v horní části okna, který bude zobrazovat uživateli aktuálně aplikované nastavení a filtry datové sady. Konkrétně by měl zobrazovat nastavení filtrů pro adresu řídící stanice, adresy podřízených stanic, směr a časový interval. Panel by navíc měl ukazovat i nastavenou velikost časového okna a název zvoleného atributu.
+
+\subsection*{Panel karet}
+
+Stěžejním prvkem uživatelského rozhraní bude panel karet, který by měl nabízet uživateli celkově 6 různých pohledů na načtená data. Popis a význam jednotlivých pohledů je blíže rozebrán v podkapitole \ref{tab_views}. Jejich finální podoba je pak ukázána na obrázcích v příloze \ref{panel_images}.
+
+
+\chapter{Implementace aplikace ICS Analyzer}
+\label{chapter_implementation}
+
+Následující kapitola se zabývá implementačními detaily aplikace \emph{ICS Analyzer}. K jejímu vývoji byl vybrán jazyk \emph{Python 3} a některé jeho široce užívané knihovny, jenž jsou představeny v podkapitole \ref{tools_and_libs}. Architektura aplikace a její rozdělení do logických celků je popsáno v podkapitole \ref{app_architecture}.
+
+Během vývoje bylo potřeba vyřešit značné množství překážek. Jednou z nejvýznamnějších byla vysoká časová náročnost funkcí pro zpracování datových sad. Problém byl vyřešen použitím tzv. \emph{vektorizace}, která je popsána v podkapitole \ref{vectorization}.
+
+Aplikace nabízí uživateli přímočarý způsob načítání datové sady. Jeho průběh je popsán v podkapitole \ref{dataset_loading}. Následuje představení jednotlivých pohledů (karet). Každý pohled nabízí unikátní náhled na datovou sadu a poskytuje uživateli jinou informaci o komunikaci. Jejich podrobný popis je uveden v podkapitole \ref{tab_views}.
+
+
+\section{Použité nástroje a knihovny}
+\label{tools_and_libs}
+
+Implementace aplikace je založena na jazyce \emph{Python}\footnote{\url{https://www.python.org/downloads/release/python-3104/}} 3.10.4, který nabízí jak prostředky pro zpracování dat, tak pro tvorbu \emph{desktopových} aplikací a jejich uživatelského rozhraní. V implementaci jsou využity nové konstrukce verze 3.10 (např. \emph{structural pattern matching} nebo nová syntaxe pro \emph{type hinting}) a tudíž není aplikace zpětně kompatibilní se staršími verzemi.
+
+K tvorbě grafického uživatelského rozhraní byla použita knihovna \emph{PyQt6}\footnote{\url{https://pypi.org/project/PyQt6/6.2.3/}}. Jedná se o~robustní a populární nástroj pro tvorbu multiplatformních uživatelských rozhraní, který vychází z frameworku \emph{Qt} pro \emph{C++}. \emph{PyQt6} poskytuje uživateli možnost tvorby rozhraní jak \uv{programově}, tak pomocí nástroje \emph{Qt Designer}. Pro účely této práce byla zvolena první varianta.
+
+K načtení, zpracování a analýze datových sad byly využity knihovny \emph{NumPy}\footnote{\url{https://numpy.org/}} a \emph{Pandas}\footnote{\url{https://pandas.pydata.org/}}. Ke grafickému zobrazení dat pak byly použity knihovny \emph{Matplotlib}\footnote{\url{https://matplotlib.org/}} a \emph{Seaborn}\footnote{\url{https://seaborn.pydata.org/}}. Všechny zmíněné knihovny jsou široce využívány komunitou a patří mezi standardní nástroje pro zpracování a analýzu dat.
+
+Za speciální zmínku stojí datová struktura \emph{datového rámce} (angl. \emph{dataframe}), která je obecně nejpoužívanějším objektem knihovny \emph{Pandas} \cite{df}. Jedná se o dvourozměrnou datovou strukturu, kde řádky reprezentují jednotlivé záznamy a~sloupce reprezentují atributy datové sady. Sloupce jsou určeny názvem a datovým typem. Povinným sloupcem je tzv. \uv{index}, který slouží k adresaci záznamů. V aplikaci se datové rámce využívají k uchovávání načtených dat a manipulaci s nimi.
+
+\section{Architektura}
+\label{app_architecture}
+
+Zdrojový kód aplikace je rozdělen na dva logické celky, které jsou implementovány ve formě \emph{Python} balíčků. Prvním z nich je balíček \texttt{app}, jenž implementuje hlavní části aplikace jako je uživatelské rozhraní apod. Druhým je balíček \texttt{dsmanipulator}, který poskytuje nástroje ke zpracování datových rámců obsahující data z průmyslové komunikace. Architektura aplikace je naznačená blokovým schématem na obrázku \ref{fig:app_arch}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.8\textwidth]{obrazky-figures/architecture.pdf}
+	\caption{Blokové schéma architektury aplikace \emph{ICS Analyzer}. Schéma obsahuje pouze nejdůležitější moduly.}
+	\label{fig:app_arch}
+\end{figure}
+
+
+
+
+\subsection*{Balíček \texttt{app}}
+\label{app}
+
+Balíček obsahuje implementaci grafického uživatelského rozhraní a funkcionality aplikace. Využívá metod nabízených balíčkem \texttt{dsmanipulator}. Nejdůležitějšími moduly balíčku jsou:
+
+\begin{itemize}
+    \item \texttt{mainwindow}: implementace hlavního okna aplikace.
+    \item \texttt{dialogs}: implementace dialogů aplikace (např. dialog pro změnu řídící stanice, intervalu, \dots).
+    \item \texttt{tabs}: implementace pohledů (karet) aplikace. Jednotlivé pohledy jsou blíže popsány v podkapitole \ref{tab_views}.
+    \item \texttt{opencsvwizard}: implementace dialogu pro načítání \texttt{csv} souborů, jehož podrobnější popis je uveden v podkapitole \ref{dataset_loading}.
+\end{itemize}
+
+
+
+\subsection*{Balíček \texttt{dsmanipulator}}
+\label{dsmanipulator}
+
+Balíček nabízí funkcionalitu pro načítání a zpracování datových rámců, které obsahují záznamy průmyslové komunikace. Je koncipován tak, aby byl použitelný i jako samostatná jednotka (např. pro \uv{ruční} analýzu datových sad v nástroji \emph{Jupyter Notebook}\footnote{\url{https://jupyter.org/}}). Stěžejními moduly balíčku \texttt{dsmanipulator} jsou:
+
+\begin{itemize}
+    \item \texttt{dsloader}: funkce pro detekci vlastností \texttt{csv} souboru (např. oddělovače sloupců) a jeho načtení.
+    \item \texttt{dscreator}: funkce pro vnitřní zpracování datového rámce. Jedná se např. o funkce pro převod indexového sloupce na časovou řadu nebo přidání sloupců pro reprezentaci různých vlastností (vnitřní identifikátor stanice, komunikující dvojice, \emph{inter-arrival time} \dots).
+    \item \texttt{dsanalyzer}: funkce pro analýzu datového rámce, generování statistik a grafů.
+\end{itemize}
+
+
+
+
+
+
+\section{Vektorizace}
+\label{vectorization}
+
+Jedním z problémů, které vznikly během vývoje aplikace (konkrétně modulu \texttt{dscreator}), byla nízká efektivita funkcí pro zpracování datových rámců, což znemožňovalo použití aplikace pro větší datové sady. Z tohoto důvodu je v implementaci aplikace využito tzv. \emph{vektorizace}, díky které lze významně urychlit výpočet některých operací nad datovými rámci. Metody vektorizace jsou nabízeny převážně knihovnou \emph{NumPy} a v aplikaci jsou primárně využity v modulu \texttt{dscreator}. Příklad užití vektorizace v aplikaci je ukázán na obrázku \ref{fig:vectorization}.
+
+\begin{figure}[H]%
+    \centering
+    \begin{subfigure}{0.8\textwidth}
+        \centering
+        
+        \begin{python}
+def add_station_id(
+    df: pd.DataFrame,
+    station_ids: dict[Station, int],
+) -> pd.DataFrame:
+
+    df["SRC station id"] = df.apply(
+        lambda row: station_ids[Station(row["srcIP"], row["srcPort"])],
+        axis=1,
+    )
+
+    return df
+        \end{python}
+        \caption{Původní \uv{naivní} implementace, která nevyužívá vektorizace. Při zpracování datové sady D byl čas potřebný k vykonání funkce 18.6~s.}
+        \label{fig:vectorization1}
+    \end{subfigure}
+    \par\medskip
+    \begin{subfigure}{0.8\textwidth}
+        \centering
+        
+        \begin{python}
+def add_station_id_vectorized(
+    df: pd.DataFrame,
+    station_ids: dict[Station, int],
+) -> pd.DataFrame:
+
+    def get_station_id(ip, port):
+        return station_ids[Station(ip, port)]
+
+    get_station_id_vectorized = np.vectorize(get_station_id)
+
+    # prevod sloupcu datoveho ramce do numpy poli
+    srcIPs = df["srcIP"].values
+    srcPorts = df["srcPort"].values
+
+    df["SRC station id"] = get_station_id_vectorized(srcIPs, srcPorts)
+
+    return df
+        \end{python}
+        
+        
+        \caption{Implementace využívající vektorizace. Při zpracování datové sady D byl čas potřebný k vykonání funkce 1.72~s.}
+        \label{fig:vectorization2}
+    \end{subfigure}
+    \caption{Funkce \texttt{add\_station\_id} přidává do datového rámce nový sloupec s vnitřním identifikátorem zdrojové stanice. Pro každý záznam v datové sadě musí funkce nahlédnout do slovníku \texttt{station\_ids}. Díky vektorizaci, lze tuto operaci provádět paralelně a snížit potřebný čas pro vykonání funkce. Při zpracování datové sady D bylo dosaženo téměř 11násobného zrychlení (testováno v prostředí \emph{Jupyter Notebook}, systém: Zorin OS 15.3, CPU: Intel i7-8750H, RAM: 16~GB). \emph{Poznámka: Pro účely ukázky byla funkce oproti implementaci v aplikaci zjednodušena.}}%
+    \label{fig:vectorization}%
+\end{figure}
+
+
+
+
+\section{Načítání datových sad}
+\label{dataset_loading}
+
+Aplikace podporuje načítání datových sad ze souborů ve formátu \texttt{csv}. Podmínkou je, aby soubor obsahoval kompletní záznamy některých povinných atributů. Konkrétně se jedná o~tyto atributy: Časové razítko, IP adresa zdrojové stanice, IP adresa cílové stanice. Pro optimální funkcionalitu aplikace by se v datové sadě měly nacházet i nepovinné atributy značící relativní čas, port zdrojové stanice a port cílové stanice. V případě, že některý z těchto atributů chybí, budou některé části aplikace omezeny. Bez specifikace portů, může automatická detekce řídící stanice selhat. Při chybějícím relativním čase, nebudou k dispozici popisné statistiky \emph{inter-arrival time}.
+
+Po kliknutí na tlačítko pro načtení nové datové sady se uživateli zobrazí obrazovka pro výběr oddělovače dat, která je zobrazena na obrázku \ref{fig:delim_select_screen}. Aplikace se nejprve pokusí oddělovač detekovat sama a zobrazí uživateli názvy sloupců, které by vznikly použitím daného oddělovače. V případě, že detekce selže (např. když se v názvech sloupců nachází jiné znaky běžně používané jako oddělovače), může uživatel volbu změnit a aplikace mu zobrazí nové názvy sloupců.
+
+Na další obrazovce (viz \ref{fig:type_select_screen}) volí uživatel datové typy sloupců a~sloupce, které náleží speciálním atributům jako je časové razítko, IP adresa atd. Mezi podporované datové typy patří: časové razítko, textový řetězec a číselná hodnota. I v tomto případě se aplikace snaží automaticky detekovat datové typy atributů a to na základě prvních 10~000 záznamů. Je však žádoucí, aby uživatel detekované datové typy překontroloval a upravil, jelikož špatně zvolený datový typ vede k selhání načtení datové sady. Jelikož byla aplikace stavěna primárně pro zpracování datových sad představených v kapitole \ref{datasets_analysis}, je detekce pro tyhle datové sady optimalizována a nevyžaduje zásah uživatele. Dále uživatel volí, které sloupce reprezentují speciální atributy. Celkově aplikace podporuje 6 speciálních atributů, z nichž 3 jsou povinné (časové razítko, IP adresa zdrojové stanice, IP adresa cílové stanice) a 3 nepovinné (relativní čas, port zdrojové stanice, port cílové stanice). 
+Při jakékoliv změně konfigurace, provede aplikace její kontrolu. Nejprve dojde k ověření zda-li jsou zvolené datové typy sloupců kompatibilní s reprezentací atributů. Poté se aplikace pokusí na pozadí načíst 15~000 záznamů a ověřit, že nedošlo k problémům při načítání. Pokud aplikace nalezne problém, vypíše se upozornění a uživateli je znemožněno postupovat dále.
+
+
+
+
+
+
+
+\section{Pohledy}
+\label{tab_views}
+
+
+Pohledy nabízí způsob, jakým efektivně zkoumat načtená data. Celkově aplikace podporuje 6 pohledů, které se liší informační hodnotou a~mění se na základě zvoleného nastavení a~filtrů. U každého pohledu je uvedeno, které nastavení jej ovlivňuje. Nadpisy sekcí v této podkapitole reflektují pojmenování pohledů v aplikaci.
+
+
+\subsection*{Dataset table}
+
+Prvním pohledem je jednoduché promítnutí načteného datového souboru do tabulky. Tabulka přehledně zobrazuje data načtená z \texttt{csv} a usnadňuje jejich čtení a prohlížení. Pro uživatele má největší význam ve chvíli, kdy už se v komunikaci orientuje a potřebuje zkontrolovat např. hodnoty atributů jednotlivých paketů, jejich přesné pořadí apod. Pohled reaguje pouze na změny filtrů a jeho ukázka je na obrázku \ref{fig:tab1}.
+
+\subsection*{General statistics}
+
+Druhý pohled souhrnně zobrazuje základní statistiky datového souboru. Dělí se na dva sloupce. Levý sloupec zobrazuje statistiky načtených dat bez aplikovaných filtrů a~mění se pouze při načtení nové datové sady. Pravý sloupec zobrazuje statistiky filtrovaných dat a~mění se při jakékoliv změně filtrů. Uživateli dává pohled základní představu o vlastnostech datové sady kterou zkoumá. Ve statistikách jsou obsažený informace jako např. délka časového intervalu dat, popisné míry inter-arrival time (jehož význam je popsán v podkapitole \ref{inter-arrival_time}), seznam unikátních hodnot atributů atd. Ukázka pohledu je na obrázku \ref{fig:tab2}.
+
+\subsection*{All pairs}
+Pohled obsahuje jeden graf pro každou komunikační dvojici v datové sadě, které jsou vždy zobrazeny všechny (nezávisle na filtrech). Grafy ukazují vývoj jak celkového počtu paketů v čase, tak pro každý směr zvlášť. Pohled pomáhá uživateli určit, která stanice je řídící a~ukazuje v jakých časech mezi sebou stanice komunikují. Metoda analýzy komunikace pomocí počtu paketů je popsána v podkapitole \ref{packet_counting}. Pohled reaguje pouze na změnu velikosti časového okna a na změnu intervalu, ostatní filtry pohled neovlivňují. Ukázka pohledu je k nalezení v příloze \ref{fig:tab3}.
+
+
+\subsection*{Selected slaves}
+
+Čtvrtý pohled poskytuje uživateli náhled na průběh komunikace řídící stanice s jednotlivými podřízenými stanicemi.V horní části pohledu se nachází spojnicový graf, který vychází z~metody popsané v podkapitole \ref{master-orinted_plot}. Pod grafem se nachází tabulka, která ukazuje přesné hodnoty hranic (viz \ref{tab:idk}). Ukázka pohledu je na obrázku \ref{fig:tab4}.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+\textbf{\begin{tabular}[c]{@{}l@{}}Adresa podřízené\\ stanice\end{tabular}} & \textbf{\begin{tabular}[c]{@{}l@{}}Čas prvního\\ paketu\end{tabular}} & \textbf{\begin{tabular}[c]{@{}l@{}}Čas posledního\\ paketu\end{tabular}} & \textbf{\begin{tabular}[c]{@{}l@{}}Délka\\ trvání\end{tabular}} & \textbf{\begin{tabular}[c]{@{}l@{}}Počet\\ paketů\end{tabular}} \\ \hline
+192.168.11.11:49784                                                         & 13:03:10.31                                                           & 13:20:03.94                                                              & 00:16:53.63                                                     & 9905                                                            \\ \hline
+192.168.11.11:49830                                                         & 13:20:04.97                                                           & 13:29:26.00                                                              & 00:09:21.03                                                     & 3011                                                            \\ \hline
+192.168.11.11:49849                                                         & 13:29:27.03                                                           & 17:56:31.33                                                              & 04:27:04.30                                                     & 91617                                                           \\ \hline
+\end{tabular}
+\caption{Ukázka tabulky na komunikaci z datové sady C. Řádky reprezentují vlastnosti komunikace řídící stanice \texttt{192.168.11.248:2404} s jednotlivými podřízenými stanicemi.}
+\label{tab:idk}
+\end{table}
+
+
+\subsection*{Attribute table}
+
+Pokud je uživatelem vybrán atribut, zobrazí se v tomto pohledu tabulka časových oken, jejíž podoba je naznačena v tabulce \ref{tab:attribute_table}. Pohled reaguje na všechna možná nastavení a jeho ukázka je v přílože \ref{fig:tab5}.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+               & \textbf{46} & \textbf{67} & \textbf{82} & $\cdots$ \\ \hline
+\textbf{17:15} & 75          & 46          & 0           &     \\ \hline
+\textbf{17:20} & 25          & 60          & 2           &     \\ \hline
+\textbf{17:25} & 24          & 73          & 0           &     \\ \hline
+$\vdots$            &             &             &             &     \\ \hline
+\end{tabular}
+\renewcommand{\arraystretch}{1}
+\caption{Ukázka tabulky časových oken na datech z datové sady A. Na vertikální \uv{ose} jsou vyznačeny začátky časových oken, na horizontální \uv{ose} jsou vyznačeny vybrané hodnoty atributu \emph{ipLen}. Vnitřní buňky tabulky značí počet odchycených paketů v daném intervalu s danou hodnotou atributu.}
+\label{tab:attribute_table}
+\end{table}
+
+\subsection*{Attribute statistics}
+
+Poslední pohled nabízí bližší pohled na vybraný zkoumaný atribut. Přímo vychází z metody popsané v podkapitole \ref{attribute_stability}. V horní části pohledu je vygenerován spojnicový graf, který ukazuje počty paketů v časových oknech pro každou ze zvolených hodnot zkoumaného atributu. V dolní části pohledu se nachází přehledová tabulka, která ukazuje pro každou hodnotu atributu některé jeho míry polohy a variability. Popisné charakteristiky jsou počítány z počtu zachycených paketů v jednotlivých časových oknech. Hlavička přehledové tabulky je demonstrována tabulkou \ref{tab:descriptive_table}. Pohled reaguje na všechna možná nastavení. Ukázka viz \ref{fig:tab6}.
+
+\begin{table}[H]
+\begin{tabularx}{\textwidth}{|Y|l|l|l|l|l|l|l|l|l|l|l|}
+\hline
+\begin{tabular}[c]{@{}l@{}}Attr.\\ value\end{tabular} & $\mu$    & $\sigma$ & $\sigma^2$ & $q_1$    & $q_2$    & $q_3$    & $IQR$    & $\mu -3 \sigma$ & $\mu +3 \sigma$ & \begin{tabular}[c]{@{}l@{}}Interval\\ size\end{tabular} & Outliers      \\ \hline
+                                                        $\cdots$  & $\cdots$ & $\cdots$ & $\cdots$   & $\cdots$ & $\cdots$ & $\cdots$ & $\cdots$ & $\cdots$        & $\cdots$        & $\cdots$      & $\cdots$ \\ \hline
+\end{tabularx}
+\caption{Ukázka hlavičky přehledové tabulky. Sloupec \emph{Interval size} reprezentuje velikost rozdílu $(\mu + 3 \sigma) - (\mu - 3 \sigma)$ a sloupec \emph{Outliers} počet hodnot, které spadají mimo interval $3\sigma$.}
+\label{tab:descriptive_table}
+\end{table}
+
+
+
+
+\chapter{Experimenty}
+\label{chapter_experiments}
+
+
+Cílem experimentů je ukázat, že lze aplikaci \emph{ICS Analyzer} využít k nalezení stabilních charakteristik a anomálií v komunikaci. Pro experimenty bude využita datová sada B, obsahující běžnou komunikaci (viz \ref{basic_datasets}), a 6 datových sad s útoky, jejichž popis je uveden v podkapitole \ref{attack_datasets}. V první řadě je potřeba v běžné komunikaci najít takové typy paketů, jejichž počet zachycení v čase vykazuje známky stability. Typy paketů budou rozlišovány pomocí různých hodnot jednotlivých atributů. Průběh výběru relevantních typů je popsán v podkapitole \ref{search_stability}. Dalším krokem je použití aplikace k detekci anomálií v datových sadách s útoky, ke které by ideálně měla být využita znalost stabilních charakteristik. Výsledky analýzy datových sad s útoky jsou uvedeny v podkapitole \ref{attack_search}.
+
+
+
+\section{Hledání stabilních atributů}
+\label{search_stability}
+
+Stabilním atributem se v této práci rozumí konkrétní hodnota atributu, jejíž počty se v~jednotlivých časových oknech výrazně nemění. Pro stabilní atributy je typické, že hodnota jejich rozptylu není příliš velká. Je však problematické určit hraniční hodnotu rozptylu tak, aby se o atributu dalo říct, že je dostatečně stabilní. Tuhle hranici je většinou potřeba určit experimentálně.
+Obecně lze požadavky na hledané atributy shrnout těmito body:
+
+
+\begin{enumerate}
+    \item \textbf{Nízký rozptyl:} atribut by neměl mít příliš vysoký rozptyl, jelikož detekce odlehlých hodnot je pak příliš benevolentní a nezachytí vše co by měla. Ideálně by interval $\langle{\mu-3\sigma,\mu+3\sigma}\rangle$ (dále jen \uv{interval $3\sigma$}) měl být co nejmenší, tak aby byl detekovatelný i malý výkyv hodnot.
+    \item \textbf{Příslušnost k intervalu $3\sigma$:} v ideálním případě by do intervalu $3\sigma$ měly padnout všechny hodnoty z normální komunikace. Většinou je však nutné připustit i několik málo hodnot, které padnou mimo interval. V případě, že by už v běžné komunikaci padalo mnoho hodnot mimo interval $3\sigma$, vznikaly by v analýze falešné pozitivní hodnoty (tj. normální hodnoty označené jako anomálie).
+    \item \textbf{Kladná hodnota spodní hranice intervalu $3\sigma$:} obecně není příliš vhodné volit atributy, které se pohybují příliš \uv{nízko} tzn. jejich střední hodnota se blíží nule. U~takových atributů je obtížné detekovat výpadky. Proto minimálním požadavkem je aby byla spodní hranice intervalu $3\sigma$ větší než 0.
+\end{enumerate}
+
+\noindent Dobrou praktikou je neomezovat se pouze na \uv{nejstabilnější} atribut v komunikaci, ale uvažovat i ty méně stabilní. Různé druhy útoků a anomálií mohou ovlivňovat různé atributy.
+
+\subsection*{Nalezené stabilní atributy}
+
+Pomocí aplikace \emph{ICS Analyzer} byly v datové sadě B nalezeny atributy, které splňují výše popsané požadavky. Tyto atributy, jejich střední hodnota, rozptyl a interval $3\sigma$ jsou uvedeny v tabulce \ref{tab:stable_attributes}. Mezi atributy \emph{ipLen} a \emph{len} byla nalezena vysoká korelace, proto jsou jejich hodnoty v tabulce uvedeny společně. Dále budou tyto atributy označovány pojmem \uv{nalezené stabilní atributy}.
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{|X|c|c|c|c|c|c|c|}
+\hline
+Atribut              & \begin{tabular}[c]{@{}c@{}}Hodnota\\ Atributu\end{tabular} & \begin{tabular}[c]{@{}c@{}}Směr\\ komunikace\end{tabular} & $\mu$                  & $\sigma$              & $\mu-3\sigma$          & $\mu+3\sigma$          & \begin{tabular}[c]{@{}c@{}}Velikost\\ intervalu $3\sigma$\end{tabular} \\ \hline
+\multirow{2}{*}{fmt} & \multirow{2}{*}{0x01}                                      & obousměrná                                                & \multirow{2}{*}{19.54} & \multirow{2}{*}{2.43} & \multirow{2}{*}{12.27} & \multirow{2}{*}{26.82} & \multirow{2}{*}{14.55}                                                 \\ \cline{3-3}
+                     &                                                            & \multicolumn{1}{l|}{S2M}                                  &                        &                       &                        &                        &                                                                        \\ \hline
+ipLen                & 46                                                         & \multirow{2}{*}{obousměrná}                               & \multirow{2}{*}{26.10} & \multirow{2}{*}{2.59} & \multirow{2}{*}{18.33} & \multirow{2}{*}{33.87} & \multirow{2}{*}{15.53}                                                 \\ \cline{1-2}
+len                  & 4                                                          &                                                           &                        &                       &                        &                        &                                                                        \\ \hline
+ipLen                & 46                                                         & \multirow{2}{*}{S2M}                                      & \multirow{2}{*}{22.82} & \multirow{2}{*}{1.14} & \multirow{2}{*}{19.41} & \multirow{2}{*}{26.23} & \multirow{2}{*}{6.82}                                                  \\ \cline{1-2}
+len                  & 4                                                          &                                                           &                        &                       &                        &                        &                                                                        \\ \hline
+\end{tabularx}
+\caption{Nalezené atributy vykazující stabilitu a jejich základní popisné charakteristiky.}
+\label{tab:stable_attributes}
+\end{table}
+
+
+
+\section{Detekce útoků na dostupných sadách}
+\label{attack_search}
+
+
+Tato podkapitola se zabývá použitím aplikace \emph{ICS Analyzer} k detekci útoků v datových sadách z podkapitoly \ref{attack_datasets}. K nalezeným stabilním atributům z podkapitoly \ref{search_stability} je v experimentech věnována zvýšená pozornost. Není však pravidlem, že by díky těmto atributům bylo vždy možné jednoznačně detekovat útok. Všechny grafy v této podkapitole jsou vygenerovány aplikací \emph{ICS Analyzer} s velikostí časového okna 5 minut a pro obousměrnou komunikaci.
+
+
+
+\subsection*{Datová sada \texttt{connection-loss.csv}}
+
+Výpadek komunikace je velmi snadno odhalitelný již z grafu ukazující počet paketů v čase. Takový graf je dostupný v pohledu \emph{All pairs} (je jen jeden, protože se v komunikaci nachází pouze jedna komunikační dvojice) a jeho podoba je ukázána na obrázku \ref{fig:conn_loss_attack}.
+
+Dalším ukazatelem, který napovídá tomu, že v komunikaci došlo k výpadku, je vysoká maximální hodnota \emph{inter-arrival time}, která je dle statistik aplikace 3637,29~s (údaj je dostupný v pohledu \emph{General statistics}).
+
+
+\begin{figure}[H]
+	\centering
+    \begin{tikzpicture}
+    \node(A){
+    \resizebox{1\textwidth}{!}
+        {
+            \input{pgf/conn_loss_pair.pgf}
+        }
+    };
+    \draw[red, line width=2.5pt, loosely dotted] ([shift=({-1.15,-0.6})]A) ellipse (15pt and 75pt);
+    \draw[red, line width=2.5pt, loosely dotted] ([shift=({2.15,-0.6})]A) ellipse (15pt and 75pt);
+    \end{tikzpicture}   
+	\caption{Graf počtu paketů podle směrů. Z grafu lze jasně vidět, že v komunikaci došlo ke dvěma výpadkům. V obou případech došlo k výpadku v obou směrech komunikace.}
+	\label{fig:conn_loss_attack}
+\end{figure}
+
+\subsection*{Datová sada \texttt{switching-attack-mod.csv}}
+
+
+\emph{Poznámka: Originální datová sada musela být pro účely použití v aplikaci mírně upravena. Aplikace předpokládá časovou souslednost časových razítek, která však v původní datové sadě \texttt{switching-attack.csv} není dodržena. Z tohoto důvodu je následující útok popsán na upravené datové sadě \texttt{switching-attack-mod.csv}, ve které došlo k mírné úpravě některých časových razítek.}
+
+\bigskip
+
+\noindent Všechny vybrané stabilní atributy vykazují známky kladného vychýlení v době útoku. Nejvýraznějšího vychýlení dosahuje atribut \emph{ipLen} s~hodnotou 46 (viz obrázek \ref{fig:switch_iplen}). Útok lze však zpozorovat i díky jiným ukazatelům. V komunikaci se objevují nové hodnoty atributů, které se v běžné komunikaci (v sadě B) vůbec neobjevují. Konkrétně se jedná o \emph{asduType} s hodnotou 46 a~\emph{cot} s hodnotami 6 a 7. Na obrázku \ref{fig:switch_asdu} je ukázáno neočekávané zachycení paketů s hodnotou atributu \emph{asduType} 46. Tento atribut je typickým případem atributu, který by nesplnil podmínku č.~3 uvedenou v podkapitole \ref{search_stability} a mohl by být zavržen ještě před počátkem experimentu. Experiment však ukazuje, že k detekci útoku lze použit i~takovéto atributy a to díky jejich možnému kladnému vychýlení.
+
+
+
+\begin{figure}[H]%
+    \centering
+    \begin{subfigure}{\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \node(A){
+            \resizebox{1\textwidth}{!}
+            {
+                \input{pgf/switch_iplen.pgf}
+            }
+        };
+        \draw[red, line width=2.5pt, loosely dotted] ([shift=({-3.3,0.5})]A) ellipse (10pt and 43pt);
+        \end{tikzpicture}  
+        \captionsetup{width=0.9\linewidth}
+        \caption{Graf vývoje toku jednotlivých hodnot atributu \emph{ipLen}. Během útoku došlo k výraznému vychýlení u hodnoty atributu \emph{ipLen} 46 (modrá křivka).}
+        \label{fig:switch_iplen}
+    \end{subfigure}
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \node(A){   
+            \resizebox{1\textwidth}{!}
+                {
+                    \input{pgf/switch_asdu.pgf}
+                }
+            };
+            \draw[red, line width=2.5pt, loosely dotted] ([shift=({-3.3,-1.5})]A) ellipse (8pt and 28pt);
+        \end{tikzpicture}   
+        \captionsetup{width=0.9\linewidth}
+        \caption{Graf vývoje toku jednotlivých hodnot atributu \emph{asduType}. Během útoku došlo k zachycení podezřelých paketů s hodnotou atributu \emph{asduType} 46.}
+        \label{fig:switch_asdu}
+    \end{subfigure}
+    
+    
+    \caption{Grafy ukazující vliv útoku na tok hodnot atributů \emph{ipLen} a \emph{asduType}.}%
+    \label{fig:switch_both}%
+\end{figure}
+
+
+
+
+
+
+
+
+
+
+
+\newpage
+
+\subsection*{Datová sada \texttt{scanning-attack.csv}}
+
+
+\emph{Poznámka: Před zahájením analýzy bylo potřeba nastavit v aplikaci adresu řídící stanice. Automatická detekce v tomhle případě chybně zvolila jednu z podvržených adres.}
+
+\bigskip
+
+\noindent Oba dva typy útoků (horizontální a vertikální skenování) lze jednoduše detekovat pomocí všech vybraných stabilních atributů. Během útoků se objevují časová okna, kde počet zachycených paketů s danými hodnotami atributů je nulový. Na obrázku \ref{fig:scanning_fmt} je ukázka propadu pro hodnotu atributu \emph{fmt} \texttt{0x01}.
+
+
+
+
+\begin{figure}[H]
+	\centering
+    \begin{tikzpicture}
+    \node(A){
+    \resizebox{0.98\textwidth}{!}
+        {
+            \input{pgf/scanning_fmt.pgf}
+        }
+    };
+    \draw[red, line width=2.5pt, loosely dotted] ([shift=({-2.5,-1.8})]A) ellipse (15pt and 35pt);
+    \draw[red, line width=2.5pt, loosely dotted] ([shift=({0.55,-1.8})]A) ellipse (15pt and 35pt);
+    \end{tikzpicture}   
+	\caption{Graf vývoje toku jednotlivých hodnot atributu \emph{fmt}. Během obou útoků došlo k výpadku paketů s hodnotou atributu \texttt{0x01}. Anomálie lze vypozorovat i u paketů s hodnotou atributu \texttt{0x00}, kdy u horizontálního útoku došlo k propadu, kdežto u vertikálního útoku došlou k prudkému nárůstu. Zatímco u horizontálního útoku lze pomocí aplikace nalézt výpadek mimo interval $3\sigma$, u vertikálního útoku tomu již tak není. Zde se ukazuje proč atribut s velkým rozptylem není vhodným kandidátem pro detekci anomálií. }
+	\label{fig:scanning_fmt}
+\end{figure}
+
+
+\newpage
+
+\subsection*{Datová sada \texttt{dos-attack.csv}}
+
+Útok v této datové sadě je snadno detekovatelný pomocí všech vybraných stabilních atributů. Pro demonstraci je vybrán atribut \emph{ipLen} s hodnotou 46. Aplikace hlásí výpadek hodnoty mimo interval $3\sigma$ celkem v 35 časových oknech (což odpovídá 2~hodinám a 55~minutám). Z grafu na obrázku \ref{fig:dos_plot} je pak útok jasně viditelný.
+
+\begin{figure}[H]
+	\centering
+	\begin{tikzpicture}
+    \node(A){
+    \resizebox{0.98\textwidth}{!}
+        {
+            \input{pgf/dos_iplen.pgf}
+        }
+    };
+    \draw[red, line width=2.5pt, loosely dotted] ([shift=({-4.15,-1.2})]A) ellipse (20pt and 55pt);
+    \end{tikzpicture} 
+	\caption{Graf vývoje toku jednotlivých hodnot atributu \emph{ipLen}. Během útoku nebyly zachyceny žádné pakety s hodnotou \emph{ipLen} 46. Naopak paketů s hodnotu 67 bylo zachyceno více než napovídá periodický průběh zelené křivky v grafu. Aplikace však pro hodnotu 67 nehlásí žádné výpadky mimo interval $3\sigma$ a odhalení je tak možné pouze na základě vizualizace dat grafem.}
+	\label{fig:dos_plot}
+\end{figure}
+
+\newpage
+
+\subsection*{Datová sada \texttt{rogue-devices.csv}}
+
+Útok v této datové sadě lze v aplikaci vypozorovat z grafů pro počty zachycených paketů v~jednotlivých komunikačních dvojicích (dostupných v pohledu \emph{All pairs}). Je velmi podezřelé, že se v komunikaci nachází 2 řídící stanice (označené portem 2404). Z grafů na obrázku \ref{fig:rogue_both} lze navíc vidět, že stanice s adresou \texttt{198.168.11.246:2404} komunikuje jen velmi krátce.
+
+
+
+\begin{figure}[H]%
+    \centering
+    \begin{subfigure}{\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \node(A){
+            \resizebox{1\textwidth}{!}
+            {
+                \input{pgf/rogue_pairs_attacker.pgf}
+            }
+        };
+        \end{tikzpicture}  
+        \captionsetup{width=0.9\linewidth}
+        \caption{Komunikace podvržené řídící stanice.}
+        \label{fig:rogue_attacker}
+    \end{subfigure}
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \node(A){   
+            \resizebox{1\textwidth}{!}
+                {
+                    \input{pgf/rogue_pairs_real.pgf}
+                }
+            };
+            \draw[red, line width=2.5pt, loosely dotted] ([shift=({-6.25,0})]A) ellipse (8pt and 70pt);
+        \end{tikzpicture}   
+        \captionsetup{width=0.9\linewidth}
+        \caption{V době útoku dochází k výpadku komunikace mezi opravdovou řídící stanicí a podřízenou stanicí.}
+        \label{fig:rogue_real}
+    \end{subfigure}
+    
+    
+    \caption{Grafy počtů paketů všech komunikačních dvojic v datové sadě.}%
+    \label{fig:rogue_both}%
+\end{figure}
+
+
+\subsection*{Datová sada \texttt{injection-attack.csv}}
+
+V komunikaci se objevují 2 útoky. První z nich není detekovatelný vybranými stabilními atributy. V komunikaci se však nacházejí jiné ukazatele, pomocí kterých lze podezřelou aktivitu odhalit. U hodnot atributu \emph{asduType} 45 a \emph{len} 14 dochází k prudkému nárůstu počtu zachycených paketů s danými vlastnostmi. Nárůsty jsou na obrázku \ref{fig:injection_both} zakroužkovány modrou barvou.
+
+Druhý útok již je detekovatelný pomocí atributu \emph{len} s hodnotou 4. Podobně jako u~jiných typů útoků, dochází opět k propadu počtu detekovaných paketů. V komunikaci lze navíc pozorovat podezřele zvýšenou aktivitu pro hodnoty atributu \emph{asduType} 122 a 125. Zmíněné anomálie jsou na obrázku \ref{fig:injection_both} zakroužkovány červenou barvou.
+
+
+
+\begin{figure}[H]%
+    \centering
+    \begin{subfigure}{\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \node(A){   
+            \resizebox{1\textwidth}{!}
+                {
+                    \input{pgf/injection_asdutype.pgf}
+                }
+            };
+            \draw[blue, line width=2.5pt, loosely dotted] ([shift=({-5.6,-1.24})]A) ellipse (8pt and 30pt);
+            \draw[red, line width=2.5pt, loosely dotted] ([shift=({-0.29,-0.35})]A) ellipse (8pt and 55pt);
+        \end{tikzpicture}  
+        \captionsetup{width=0.9\linewidth}
+        \caption{Graf vývoje toku vybraných hodnot atributu \emph{asduType}. V prvním útoku dochází k nečekanému nárůstu paketů s hodnotou 45. V druhém útoku pak dochází k ještě prudšímu nárůstu paketů s hodnotami 122 a 125. Zároveň dochází k poklesu paketů s hodnotou 36, což je ovšem v tomto grafu překryto jinými křivkami (v aplikaci by se použila filtrace hodnot atributů).}
+        \label{fig:injection_asdu}
+    \end{subfigure}
+    
+    \begin{subfigure}{\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \node(A){   
+            \resizebox{1\textwidth}{!}
+                {
+                    \input{pgf/injection_len.pgf}
+                }
+            };
+            \draw[blue, line width=2.5pt, loosely dotted] ([shift=({-5.6,-0.35})]A) ellipse (8pt and 55pt);
+            \draw[red, line width=2.5pt, loosely dotted] ([shift=({-0.29,0.05})]A) ellipse (8pt and 50pt);
+        \end{tikzpicture}   
+        \captionsetup{width=0.9\linewidth}
+        \caption{Graf vývoje toku vybraných hodnot atributu \emph{len}. V prvním útoku dochází k prudkému nárůstu paketů s hodnotou 14. U druhého útoku naopak dochází k poklesu paketů s hodnotou 4.}
+        \label{fig:injection_len}
+    \end{subfigure}
+    
+    \caption{Grafy ukazující vliv útoků na tok hodnot atributu \emph{asduType} a \emph{len}. Pro zvýšení přehlednosti grafů jsou zobrazeny pouze hodnoty atributů relevantní pro detekci útoků.}%
+    \label{fig:injection_both}%
+\end{figure}
+
+
+\chapter{Závěr}
+
+Cílem práce bylo navrhnout a naimplementovat aplikaci pro statistickou analýzu průmyslové komunikace využívající protokolu IEC 104. Před započetím vývoje aplikace bylo potřeba nastudovat celkově tři velké tématické okruhy. Prvním z nich byla tématika ICS komunikace a protokolu IEC 104, která byla důležitá pro porozumění obsahu datových sad. Dalším okruhem byly metody pro statistický popis, analýzu a zpracování dat. A to jak z teoretického hlediska (charakteristiky míry a variability), tak i z praktického (knihovny \emph{Pandas}, \emph{Seaborn}, \dots). Poslendím okruhem byla problematika návrhu a vývoje grafického uživatelského rozhraní pomocí framworku \emph{PyQt6} pro jazyk \emph{Python}.
+
+Navržená aplikace \emph{ICS Analyzer} umožňuje uživateli načíst datovou sadu se záznamem průmyslové komunikace ve formátu \texttt{csv}. Uživatel může před provedením analýzy datovou sadu vyfiltrovat na základě pěti kritérií. Aplikace poskytuje mimo obecných statistik datové sady také vhledy, díky kterým může uživatel nalézt stabilní prvky v komunikaci. Zejména potom stabilita v počtu zachycených paketů určitého typu v čase se jeví jako dobrý ukazatel pro detekci různých druhů anomálií.
+
+Prostoru pro budoucí rozšíření aplikace je poměrně hodně. V první řadě by bylo dobré do aplikace přidat novou kartu, která by umožňovala zkoumat korelaci mezi různými atributy datové sady. Dále by aplikace mohla nabízet nové filtrovací kritérium, které by bylo založené na hodnotě \emph{inter-arrival time}. Mezi menší možné úpravy patří přidání možnosti volby počátečního data načítané datové sady a dopočet relativního času z časového razítka.
+
+Na závěr bych chtěl dodat, že si z práce odnáším mnoho cenných znalostí, a to zejména na poli zpracování a analýzy dat, kterému bych se chtěl v buoucím profesním životě blíže věnovat. 
+
+
+
+
+%===============================================================================

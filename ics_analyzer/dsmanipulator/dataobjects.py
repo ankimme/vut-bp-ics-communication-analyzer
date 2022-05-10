@@ -1,9 +1,22 @@
+"""This file contains object used to store data.
+
+Author
+------
+Andrea Chimenti
+
+Date
+----
+April 2022
+"""
+
 from enum import IntEnum, auto
 from dataclasses import dataclass
 from collections import namedtuple
 
 
 class DirectionEnum(IntEnum):
+    """Enumeration of directions."""
+
     BOTH = auto()
     M2S = auto()
     S2M = auto()
@@ -15,7 +28,14 @@ Direction = namedtuple("Direction", "src dst")
 
 @dataclass(frozen=True)
 class Station:
-    # TODO dokumentace
+    """Representation of a station.
+
+    Returns
+    -------
+    str
+        String representatio of station
+    """
+
     ip: str
     port: int = None
 
@@ -24,29 +44,6 @@ class Station:
             return f"{self.ip}:{self.port:.0f}"
         else:
             return f"{self.ip}"
-
-
-@dataclass(frozen=True)
-class CommunicationPair:
-    """Representation of a communication pair.
-
-    Attributes
-    ----------
-    src_ip : str
-        Source IP address.
-    dst_ip : str
-        Destination IP address.
-    src_port : int
-        Source port.
-    dst_port : int
-        Destination port.
-    """
-
-    src_ip: str
-    dst_ip: str
-
-    src_port: int = None
-    dst_port: int = None
 
 
 @dataclass()

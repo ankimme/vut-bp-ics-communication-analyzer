@@ -1,9 +1,18 @@
-# TODO doc
+"""App tabs.
+
+Author
+------
+Andrea Chimenti
+
+Date
+----
+March 2022
+"""
+
 
 import os
 import numpy as np
 import pandas as pd
-import datetime
 
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT
 
@@ -32,6 +41,8 @@ from app.widgets import MplCanvas, InfoLabel
 
 
 class OriginalDfTab(QTableView):
+    """Tab with original data view.
+    """
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
 
@@ -51,7 +62,7 @@ class OriginalDfTab(QTableView):
 
 class StatsTab(QScrollArea):
     def __init__(self, parent: QWidget = None) -> None:
-        """TODO
+        """Tab with stats.
 
         Attributes
         ----------
@@ -318,6 +329,7 @@ class StatsTab(QScrollArea):
 
 
 class PairPlotsTab(QScrollArea):
+    """Tab with plot of pairs."""
     def __init__(self, parent: QWidget) -> None:
         super().__init__(parent)
         self.setWidgetResizable(True)
@@ -374,6 +386,7 @@ class PairPlotsTab(QScrollArea):
 
 
 class SlavesPlotTab(QWidget):
+    """Tab with a plot of selected slaves."""
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
 
@@ -430,13 +443,6 @@ class SlavesPlotTab(QWidget):
 
 class TimeFrameViewTab(QTableView):
     def __init__(self, parent: QWidget = None) -> None:
-        """TODO
-
-        Attributes
-        ----------
-        TODO
-
-        """
         super().__init__(parent)
 
         self.df_model: DataFrameModel
@@ -498,8 +504,6 @@ class AttributeStatsTab(QWidget):
         self.update()
 
     def update_plot(self, data: EventData) -> None:
-        # return
-        # TODO assert
         self.canvas.axes.cla()
         if data.attribute_name is not None:
 

@@ -1,4 +1,14 @@
-from contextlib import redirect_stderr
+"""A set of tools for analyzing the dataset.
+
+Author
+------
+Andrea Chimenti
+
+Date
+----
+April 2022
+"""
+
 import random
 from bidict import bidict
 import numpy as np
@@ -43,7 +53,28 @@ def get_slaves_stats(
     station_ids: bidict[int, Station],
     pair_ids: bidict[int, frozenset],
 ) -> pd.DataFrame:
+    """Get statistics about slave stations.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+    fcn : FileColumnNames
+        Real names of predefined columns.
+    master_station_id : int
+        _description_
+    slave_station_ids : list[int]
+        _description_
+    station_ids : bidict[int, Station]
+        _description_
+    pair_ids : bidict[int, frozenset]
+        _description_
+
+    Returns
+    -------
+    pd.DataFrame
+        _description_
+    """
     data = []
     for slave_id in slave_station_ids:
 
@@ -161,8 +192,6 @@ def get_iat_stats_whole_df(df: pd.DataFrame, fcn: FileColumnNames):
     # drop first value because it is always zero
     iats = iats[1:]
 
-    # np.savetxt("iats_whole_df.txt", iats)
-
     # mean, median, min, max
     if len(iats) > 0:
         return iats.mean(), np.median(iats), iats.min(), iats.max()
@@ -205,8 +234,6 @@ def get_iat_stats_filtered(
         new_iats = new_iats[1:]
 
         all_iats = np.concatenate((all_iats, new_iats))
-
-    # np.savetxt("iats_filtered.txt", all_iats)
 
     if len(all_iats) > 0:
         # mean, median, min, max
@@ -388,7 +415,6 @@ def plot_pair_flow(
     direction_ids: bidict[int, Direction],
     resample_rate: pd.Timedelta,
 ) -> None:
-    # TODO doc
     assert all(col in df.columns for col in [fcn.timestamp, fcn.pair_id, fcn.direction_id])
 
     # filter original dataframe and expand values
@@ -404,7 +430,6 @@ def plot_pair_flow(
     # rename expanded cols so that the legend shows relevant information
     renamed_cols: dict[str, str] = {}
     for col in expanded_cols:
-        # TODO parse error
         direction_id = int(col.rsplit(":", 1)[1])
         src_station = station_ids[direction_ids[direction_id].src]
         dst_station = station_ids[direction_ids[direction_id].dst]
@@ -428,22 +453,10 @@ def plot_pair_flow(
     ax.xaxis.set_major_locator(AutoDateLocator())
     ax.xaxis.set_major_formatter(DateFormatter("%H:%M"))
 
-    # plt.xlim([min(tmpdf.index), max(tmpdf.index)])
-    # print(min(k))
-    # print(max(k))
-    # k = pd.DatetimeIndex(df[fcn.timestamp])
-    # axes.set_xlim([min(k), max(k)])
-
     sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=ax)
 
     for line in ax.lines:
         line.set_linestyle("solid")
-
-    # axes.xaxis.set_major_locator(AutoDateLocator())
-    # axes.xaxis.set_major_formatter(DateFormatter("%H:%M"))
-
-    # plt.xlim([min(x), max(x)])
-    # plt.ylim([0, max(y)])
 
     ax.legend(loc="upper right")
 
@@ -457,7 +470,6 @@ def plot_slaves(
     station_ids: bidict[int, Station],
     pair_ids: bidict[int, frozenset],
 ) -> None:
-    #     # TODO doc
 
     tmpdf = dsc.expand_values_to_columns(df, fcn.pair_id, drop_column=True)
 
@@ -485,8 +497,6 @@ def plot_slaves(
 
     ax.xaxis.set_major_locator(AutoDateLocator())
     ax.xaxis.set_major_formatter(DateFormatter("%H:%M"))
-
-    # ax.legend([], [], loc="center right", frameon=False)
 
     sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=ax)
 
@@ -525,8 +535,6 @@ def plot_attribute_values(
 
     ax.xaxis.set_major_locator(AutoDateLocator())
     ax.xaxis.set_major_formatter(DateFormatter("%H:%M"))
-
-    # ax.legend([], [], loc="center right", frameon=False)
 
     sns.lineplot(data=tmpdf, palette="tab10", linewidth=2.5, ax=ax)
 

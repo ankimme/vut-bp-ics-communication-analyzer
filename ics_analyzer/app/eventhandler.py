@@ -21,9 +21,6 @@ import pandas as pd
 from dsmanipulator.dataobjects import FileColumnNames, Direction, Station, DirectionEnum
 
 
-# TODO doc
-
-
 @dataclass(frozen=True)
 class EventData:
     df_working: pd.DataFrame

@@ -1,3 +1,14 @@
+"""Workers.
+
+Author
+------
+Andrea Chimenti
+
+Date
+----
+March 2022
+"""
+
 import pandas as pd
 import csv
 
@@ -21,7 +32,6 @@ class LoadCsvWorker(QObject):
         self.dialect = dialect
 
     def load_csv(self):
-        """TODO"""
         try:
             df = dsl.load_data(self.file_name, self.data_types, self.dialect)
             self.csv_loaded.emit(df)

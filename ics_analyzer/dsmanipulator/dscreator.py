@@ -1,8 +1,19 @@
+"""A set of tools for creating the dataset.
+
+Author
+------
+Andrea Chimenti
+
+Date
+----
+April 2022
+"""
+
 import numpy as np
 import pandas as pd
 from bidict import bidict
 
-from .dataobjects import CommunicationPair, Direction, FileColumnNames, Station
+from .dataobjects import Direction, FileColumnNames, Station
 
 # region Utilities
 
@@ -140,36 +151,6 @@ def create_direction_ids(df: pd.DataFrame, fcn: FileColumnNames) -> bidict[int, 
     directions = [Direction(*x) for x in tmpdf.value_counts().index.values]
 
     return bidict({i: v for i, v in enumerate(directions)})
-
-
-# def find_communication_pairs(df: pd.DataFrame, fcn: FileColumnNames) -> bidict[int, CommunicationPair]:
-#     """Find all communication pairs.
-
-#     Identify all unique communicaion pairs in dataframe and assign an id. Direction DOES matter.
-
-#     Parameters
-#     ----------
-#     df : pd.DataFrame
-#         Input dataframe.
-#     fcn : FileColumnNames
-#         Real names of predefined columns.
-
-#     Returns
-#     -------
-#     bidict[int, CommunicationPair]
-#         A dictionary containing every communication pair found in dataframe.
-#         Key: new id of communication pair
-#         Value: communication pair
-#     """
-#     # TODO recreate
-#     assert all(col in df.columns for col in [fcn.src_ip, fcn.dst_ip, fcn.src_port, fcn.dst_port])
-
-#     # get all combinations of ips occuring in the dataframe
-#     list_of_tuples = df.loc[:, [fcn.src_ip, fcn.dst_ip, fcn.src_port, fcn.dst_port]].value_counts().index.values
-#     list_of_pairs = list(map(lambda x: CommunicationPair(x[0], x[1], x[2], x[3]), list_of_tuples))
-#     ids = np.arange(1, len(list_of_pairs) + 1, dtype=np.int64)
-
-#     return bidict(zip(ids, list_of_pairs))
 
 
 # endregion
@@ -356,113 +337,6 @@ def add_inter_arrival_time_ad(df: pd.DataFrame, fcn: FileColumnNames, inplace: b
     return df
 
 
-# def add_inter_arrival_time_sd(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool = False) -> pd.DataFrame:
-#     """Add interArrivalTimeSD (single direction) column to dataframe.
-
-#     Use only packets in same direction.
-
-#     Parameters
-#     ----------
-#     df : pd.DataFrame
-#         Input dataframe.
-#     fcn : FileColumnNames
-#         Real names of predefined columns.
-#     inplace : bool, optional
-#         Whether to perform the operation in place on the data.
-#         by default False
-
-#     Returns
-#     -------
-#     pd.DataFrame
-#         Dataframe with interArrivalTimeSD column.
-
-#     Notes
-#     -----
-#     Should be called after add_communication_direction()
-#     """
-#     assert all(col in df.columns for col in [fcn.rel_time, "masterToSlave"])
-
-#     if not inplace:
-#         df = df.copy()
-
-#     # M2S inter arrival times
-#     # filter only relative times of packets in master to slave direction
-#     times = df.loc[df["masterToSlave"], fcn.rel_time].values
-#     shifted = np.concatenate((times[0:1], times[:-1]))
-#     m2s = times - shifted
-
-#     # S2M inter arrival times
-#     times = df.loc[~df["masterToSlave"], fcn.rel_time].values
-#     shifted = np.concatenate((times[0:1], times[:-1]))
-#     s2m = times - shifted
-
-#     assert len(m2s) + len(s2m) == len(df.index)
-
-#     # get masks
-#     mask_m2s = df["masterToSlave"].values
-#     mask_s2m = np.invert(mask_m2s)
-#     df_len = len(df.index)
-
-#     # get indices based on masks
-#     m2s_indices = np.nonzero(mask_m2s)
-#     s2m_indices = np.nonzero(mask_s2m)
-
-#     # fill resulting array
-#     result = np.empty(df_len)
-#     result[m2s_indices] = m2s
-#     result[s2m_indices] = s2m
-
-#     df["interArrivalTimeSD"] = result
-
-#     return df TODO delete
-
-
-def add_communication_id(
-    df: pd.DataFrame, fcn: FileColumnNames, comm_pairs: bidict[int, CommunicationPair] = None, inplace: bool = False
-) -> pd.DataFrame:
-    """Add communication id column to dataframe. Direction DOES matter.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input dataframe.
-    fcn : FileColumnNames
-        Real names of predefined columns.
-    comm_pairs : bidict[int, CommunicationPair]
-        IDs of communication pairs.
-    inplace : bool, optional
-        Whether to perform the operation in place on the data.
-        by default False
-
-    Returns
-    -------
-    pd.DataFrame
-        Dataframe with new communication ID column.
-    """
-    assert all(col in df.columns for col in [fcn.src_ip, fcn.dst_ip, fcn.src_port, fcn.dst_port])
-    # TODO change
-
-    if not inplace:
-        df = df.copy()
-
-    if not comm_pairs:
-        comm_pairs = find_communication_pairs(df, fcn)
-
-    srcIPs = df[fcn.src_ip].values
-    dstIPs = df[fcn.dst_ip].values
-    srcPorts = df[fcn.src_port].values
-    dstPorts = df[fcn.dst_port].values
-
-    def f(a, b, c, d):
-        return comm_pairs.inv[CommunicationPair(a, b, c, d)]
-
-    vf = np.vectorize(f)
-
-    df[fcn.communication_id] = vf(srcIPs, dstIPs, srcPorts, dstPorts)
-
-    return df
-
-
 def add_communication_direction(
     df: pd.DataFrame, fcn: FileColumnNames, master_station_ip: str, inplace: bool = False
 ) -> pd.DataFrame:
@@ -497,62 +371,6 @@ def add_communication_direction(
     df["masterToSlave"] = srcIPs == master_station_ip
 
     return df
-
-
-# def add_pair_id(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool = False) -> pd.DataFrame:
-#     """Add a pairId column determining the id of a communication pair. Direction does not matter.
-
-#     Parameters
-#     ----------
-#     df : pd.DataFrame
-#         Input dataframe.
-#     fcn : FileColumnNames
-#         Real names of predefined columns.
-#     inplace : bool, optional
-#         Whether to perform the operation in place on the data.
-#         by default False
-
-#     Returns
-#     -------
-#     pd.DataFrame
-#         Dataframe with new 'pairId' column.
-
-#     Notes
-#     -----
-#     Should be called after add_station_id()
-#     """
-#     assert all(col in df.columns for col in [fcn.src_station_id, fcn.dst_station_id])
-
-#     def reversed_comm_pair(comm_pair: CommunicationPair) -> CommunicationPair:
-#         return CommunicationPair(src_ip=comm_pair.dst_ip, dst_ip=comm_pair.src_ip, src_port=comm_pair.dst_port, dst_port=comm_pair.src_port)
-
-#     if not inplace:
-#         df = df.copy()
-
-#     comm_pairs = find_communication_pairs(df, fcn)
-
-#     x = {}
-
-#     i = 0
-#     for comm_pair in comm_pairs.values():
-#         if comm_pair not in x.values():
-#             x[comm_pair] = i
-#             x[reversed_comm_pair(comm_pair)] = i
-#             i += 1
-
-#     srcIPs = df[fcn.src_ip].values
-#     dstIPs = df[fcn.dst_ip].values
-#     srcPorts = df[fcn.src_port].values
-#     dstPorts = df[fcn.dst_port].values
-
-#     def f(a, b, c, d):
-#         return x[CommunicationPair(a, b, c, d)]
-
-#     vf = np.vectorize(f)
-
-#     df[fcn.pair_id] = vf(srcIPs, dstIPs, srcPorts, dstPorts)
-
-#     return df
 
 
 def add_relative_days(df: pd.DataFrame, fcn: FileColumnNames, inplace: bool = False) -> pd.DataFrame:

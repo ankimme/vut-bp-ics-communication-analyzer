@@ -1,12 +1,20 @@
+"""A set of tools for loading the dataset.
+
+Author
+------
+Andrea Chimenti
+
+Date
+----
+April 2022
+"""
+
 import csv
 import numpy as np
 import pandas as pd
 
 
 def load_data(file_name: str, data_types: dict[str, str], dialect: csv.Dialect, row_limit: int = None) -> pd.DataFrame:
-    # todo df must have 'srcIP', 'srcPort', 'dstIP', 'dstPort', 'TimeStamp'
-    # todo TimeStamp ve fromatu format="%H:%M:%S.%f"
-    # todo check if file exists
 
     col_types = {k: v for k, v in data_types.items() if v != "datetime"}
     date_time_columns = [k for k, v in data_types.items() if v == "datetime"]
@@ -19,7 +27,7 @@ def load_data(file_name: str, data_types: dict[str, str], dialect: csv.Dialect, 
     return df
 
 
-def detect_delimiter(file_name: str) -> str:  # TODO delete
+def detect_delimiter(file_name: str) -> str:
     """Detect the delimiter of a CSV file.
 
     Parameters
@@ -37,7 +45,6 @@ def detect_delimiter(file_name: str) -> str:  # TODO delete
     str
         Detected delimiter.
     """
-    # TODO exceptions
     with open(file_name, "r") as file:
         header = file.readline()
 
@@ -62,7 +69,6 @@ def detect_dialect(file_name) -> csv.Dialect:
     csv.Dialect
         Detected dialect.
     """
-    # TODO exceptions
     with open(file_name, "r") as file:
         header = file.readline()
 
